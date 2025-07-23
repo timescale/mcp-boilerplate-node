@@ -16,7 +16,7 @@ export const stdioServerFactory = async <
   name: string;
   version?: string;
   context: Context;
-  apiFactories: ApiFactory<Context, any, any>[];
+  apiFactories: readonly ApiFactory<Context, any, any>[];
   cleanupFn?: () => Promise<void>;
 }) => {
   try {

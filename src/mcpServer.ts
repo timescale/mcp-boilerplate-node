@@ -10,7 +10,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
   name: string;
   version?: string;
   context: Context;
-  apiFactories: ApiFactory<Context, any, any>[];
+  apiFactories: readonly ApiFactory<Context, any, any>[];
 }): { server: McpServer } => {
   const server = new McpServer(
     {

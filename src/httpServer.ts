@@ -17,7 +17,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   name: string;
   version?: string;
   context: Context;
-  apiFactories: ApiFactory<Context, any, any>[];
+  apiFactories: readonly ApiFactory<Context, any, any>[];
   cleanupFn?: () => Promise<void>;
 }) => {
   const exitHandler = registerExitHandlers([
