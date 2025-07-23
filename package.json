@@ -1,0 +1,28 @@
+{
+  "name": "@tigerdata/mcp-boilerplate",
+  "version": "0.1.0",
+  "description": "MCP boilerplate code for Node.js",
+  "license": "UNLICENSED",
+  "author": "TigerData",
+  "homepage": "https://tigerdata.com",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepare": "npm run build",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.1",
+    "express": "^5.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.16.4",
+    "prettier": "^3.6.2",
+    "typescript": "^5.8.3"
+  }
+}
