@@ -1,6 +1,8 @@
 let handlingExit = false;
 
-export const registerExitHandlers = (cleanupFns: (() => Promise<void>)[]) => {
+export const registerExitHandlers = (
+  cleanupFns: (() => void | Promise<void>)[],
+) => {
   const exitHandler = (code = 0) => {
     if (handlingExit) return;
     handlingExit = true;

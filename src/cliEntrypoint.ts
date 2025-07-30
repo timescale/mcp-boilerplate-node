@@ -1,6 +1,12 @@
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 export async function cliEntrypoint(
-  stdioEntrypoint = './stdio.js',
-  httpEntrypoint = './httpServer.js',
+  stdioEntrypoint: string,
+  httpEntrypoint: string,
+  instrumentation = join(__dirname, './instrumentation.js'),
 ) {
   // Parse command line arguments first
   const args = process.argv.slice(2);
@@ -13,8 +19,15 @@ export async function cliEntrypoint(
         await import(stdioEntrypoint);
         break;
       case 'http':
+        let cleanup;
+        if (args.includes('--instrument')) {
+          ({ cleanup } = await import(instrumentation));
+        }
         // Import and run the HTTP server
-        await import(httpEntrypoint);
+        const { registerCleanupFn } = await import(httpEntrypoint);
+        if (cleanup && registerCleanupFn) {
+          registerCleanupFn(cleanup);
+        }
         break;
       default:
         console.error(`Unknown script: ${scriptName}`);

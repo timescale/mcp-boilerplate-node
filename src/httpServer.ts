@@ -18,16 +18,12 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   version?: string;
   context: Context;
   apiFactories: readonly ApiFactory<Context, any, any>[];
-  cleanupFn?: () => Promise<void>;
+  cleanupFn?: () => void | Promise<void>;
 }) => {
-  const exitHandler = registerExitHandlers([
-    async () => {
-      await server.close();
-    },
-    async () => cleanupFn?.(),
-    async () => mcpCleanup?.(),
-    async () => apiCleanup?.(),
-  ]);
+  const cleanupFns: (() => void | Promise<void>)[] = cleanupFn
+    ? [cleanupFn]
+    : [];
+  const exitHandler = registerExitHandlers(cleanupFns);
 
   console.error('Starting HTTP server...');
 
@@ -41,9 +37,11 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
       apiFactories,
     }),
   );
+  cleanupFns.push(mcpCleanup);
   app.use('/mcp', mcpRouter);
 
   const [apiRouter, apiCleanup] = apiRouterFactory(context, apiFactories);
+  cleanupFns.push(apiCleanup);
   app.use('/api', apiRouter);
 
   // Error handler
@@ -67,9 +65,15 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
       console.error(`HTTP Server listening on port ${PORT}`);
     }
   });
+  cleanupFns.push(async () => {
+    await server.close();
+  });
 
   return {
     app,
     server,
+    registerCleanupFn: (fn: () => Promise<void>) => {
+      cleanupFns.push(fn);
+    },
   };
 };
