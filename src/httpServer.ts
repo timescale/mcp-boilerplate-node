@@ -6,6 +6,7 @@ import { apiRouterFactory } from './http/api.js';
 import { registerExitHandlers } from './registerExitHandlers.js';
 import { ApiFactory } from './types.js';
 import { mcpServerFactory } from './mcpServer.js';
+import { log } from './logger.js';
 
 export const httpServerFactory = <Context extends Record<string, unknown>>({
   name,
@@ -25,7 +26,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
     : [];
   const exitHandler = registerExitHandlers(cleanupFns);
 
-  console.error('Starting HTTP server...');
+  log.info('Starting HTTP server...');
 
   const app = express();
 
@@ -51,7 +52,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
     res: Response,
     next: NextFunction,
   ) {
-    console.log('Received error:', err.message);
+    log.error('HTTP handler error', err);
     res.status(500).send(err.message);
   });
 
@@ -59,10 +60,10 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   const PORT = process.env.PORT || 3001;
   const server = app.listen(PORT, (error?: Error) => {
     if (error) {
-      console.error('Error starting HTTP server:', error);
+      log.error('Error starting HTTP server:', error);
       exitHandler(1);
     } else {
-      console.error(`HTTP Server listening on port ${PORT}`);
+      log.info(`HTTP Server listening on port ${PORT}`);
     }
   });
   cleanupFns.push(async () => {

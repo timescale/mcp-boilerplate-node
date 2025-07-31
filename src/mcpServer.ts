@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ApiFactory } from './types.js';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { log } from './logger.js';
 
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.mcpServer` : 'mcpServer');
@@ -49,7 +50,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
               structuredContent: result,
             };
           } catch (error) {
-            console.error('Error invoking tool:', error);
+            log.error('Error invoking tool:', error as Error);
             span.recordException(error as Error);
             span.setStatus({
               code: SpanStatusCode.ERROR,

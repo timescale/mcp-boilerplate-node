@@ -3,6 +3,7 @@ import { Request, Response, Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { RouterFactoryResult } from '../types.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { log } from '../logger.js';
 
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
@@ -30,12 +31,12 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
         onsessioninitialized: (sessionId: string) => {
           // Store the transport by session ID when session is initialized
           // This avoids race conditions where requests might come in before the session is stored
-          console.error(`Session initialized with ID: ${sessionId}`);
+          log.info(`Session initialized with ID: ${sessionId}`);
           transports.set(sessionId, transport);
         },
         onsessionclosed: (sessionId: string) => {
           if (sessionId && transports.has(sessionId)) {
-            console.error(
+            log.info(
               `Transport closed for session ${sessionId}, removing from transports map`,
             );
             transports.delete(sessionId);
@@ -87,13 +88,13 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     // Close all active transports to properly clean up resources
     for (const sessionId in transports) {
       try {
-        console.error(`Closing transport for session ${sessionId}`);
+        log.info(`Closing transport for session ${sessionId}`);
         await transports.get(sessionId)!.close();
         transports.delete(sessionId);
       } catch (error) {
-        console.error(
+        log.error(
           `Error closing transport for session ${sessionId}:`,
-          error,
+          error as Error,
         );
       }
     }

@@ -1,3 +1,5 @@
+import { log } from './logger.js';
+
 let handlingExit = false;
 
 export const registerExitHandlers = (
@@ -7,10 +9,10 @@ export const registerExitHandlers = (
     if (handlingExit) return;
     handlingExit = true;
 
-    console.error('Shutting down server...');
+    log.info('Shutting down server...');
 
     Promise.allSettled(cleanupFns.map((fn) => fn())).finally(() => {
-      console.error('Server shutdown complete');
+      log.info('Server shutdown complete');
       process.exit(code);
     });
   };
@@ -23,7 +25,7 @@ export const registerExitHandlers = (
     exitHandler();
   });
   process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    log.error('Uncaught Exception:', err);
     exitHandler(1);
   });
 
