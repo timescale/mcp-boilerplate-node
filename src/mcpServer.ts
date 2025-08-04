@@ -39,12 +39,14 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
           span.setAttribute('mcp.tool.args', JSON.stringify(args));
           try {
             const result = await tool.fn(args as any);
+            const text = JSON.stringify(result);
+            span.setAttribute('mcp.tool.responseBytes', text.length);
             span.setStatus({ code: SpanStatusCode.OK });
             return {
               content: [
                 {
                   type: 'text',
-                  text: JSON.stringify(result),
+                  text,
                 },
               ],
               structuredContent: result,
