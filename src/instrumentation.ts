@@ -1,4 +1,5 @@
 import { NodeSDK } from '@opentelemetry/sdk-node';
+import { resourceFromAttributes } from '@opentelemetry/resources';
 import { OTLPTraceExporter as GrpcTraceExporter } from '@opentelemetry/exporter-trace-otlp-grpc';
 import { OTLPTraceExporter as HttpTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
@@ -57,6 +58,10 @@ export const sdk = new NodeSDK({
   instrumentations: [getNodeAutoInstrumentations()],
   spanProcessors,
   logRecordProcessors,
+  resource: resourceFromAttributes({
+    'deployment.environment.name': process.env.NODE_ENV || 'development',
+    'service.instance.id': process.env.HOSTNAME,
+  }),
 });
 
 // Initialize the SDK and register with the OpenTelemetry API
