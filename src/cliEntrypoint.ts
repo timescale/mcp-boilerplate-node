@@ -20,7 +20,10 @@ export async function cliEntrypoint(
         break;
       case 'http':
         let cleanup;
-        if (args.includes('--instrument')) {
+        if (
+          args.includes('--instrument') ||
+          process.env.INSTRUMENT === 'true'
+        ) {
           ({ cleanup } = await import(instrumentation));
         }
         // Import and run the HTTP server
