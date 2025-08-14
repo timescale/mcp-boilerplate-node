@@ -1,5 +1,23 @@
-import type { Span } from '@opentelemetry/api';
+import type { Span, Tracer } from '@opentelemetry/api';
 import type { GenerateTextResult, ModelMessage, ToolResultPart } from 'ai';
+import { log } from './logger.js';
+
+export const withSpan = async <T>(
+  tracer: Tracer,
+  name: string,
+  fn: (span: Span) => Promise<T>,
+): Promise<T> => {
+  return tracer.startActiveSpan(name, async (span) => {
+    try {
+      return await fn(span);
+    } catch (error) {
+      log.error(`Error in span ${name}`, error as Error);
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
+};
 
 const getToolContent = (content: ToolResultPart) => {
   const { type, value } = content.output;
