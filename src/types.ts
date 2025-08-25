@@ -21,7 +21,7 @@ export interface ApiDefinition<
 > {
   name: string;
   method?: 'get' | 'post' | 'put' | 'delete';
-  route?: string;
+  route?: string | string[];
   config: ToolConfig<InputArgs, OutputArgs>;
   fn: (
     args: z.objectOutputType<InputArgs, ZodTypeAny>,

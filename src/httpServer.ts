@@ -7,6 +7,7 @@ import { registerExitHandlers } from './registerExitHandlers.js';
 import { ApiFactory } from './types.js';
 import { mcpServerFactory } from './mcpServer.js';
 import { log } from './logger.js';
+import { StatusError } from './StatusError.js';
 
 export const httpServerFactory = <Context extends Record<string, unknown>>({
   name,
@@ -52,8 +53,17 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
     res: Response,
     next: NextFunction,
   ) {
-    log.error('HTTP handler error', err);
-    res.status(500).send(err.message);
+    if (err instanceof StatusError && err.status < 500) {
+      log.info('HTTP error response', {
+        message: err.message,
+        status: err.status,
+      });
+    } else {
+      log.error('Unexpected HTTP handler error', err);
+    }
+    res
+      .status(err instanceof StatusError ? err.status : 500)
+      .json({ error: err.message });
   });
 
   // Start the server
@@ -73,6 +83,8 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   return {
     app,
     server,
+    apiRouter,
+    mcpRouter,
     registerCleanupFn: (fn: () => Promise<void>) => {
       cleanupFns.push(fn);
     },

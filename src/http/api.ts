@@ -3,6 +3,7 @@
  */
 
 import { Router } from 'express';
+import bodyParser from 'body-parser';
 import { z } from 'zod';
 import { ApiFactory, RouterFactoryResult } from '../types.js';
 
@@ -12,13 +13,19 @@ export const apiRouterFactory = <Context extends Record<string, unknown>>(
 ): RouterFactoryResult => {
   const router = Router();
 
+  router.use(bodyParser.json());
+
   for (const factory of apiFactories) {
     const tool = factory(context);
     if (!tool.method || !tool.route) continue;
 
     router[tool.method](tool.route, async (req, res) => {
       const Input = z.object(tool.config.inputSchema);
-      const input = tool.method === 'get' ? req.query : req.body;
+      const input = {
+        ...req.params,
+        ...req.query,
+        ...req.body,
+      };
       const result = await tool.fn(Input.parse(input));
       res.json(tool.pickResult ? tool.pickResult(result) : result);
     });
