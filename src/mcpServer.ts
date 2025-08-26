@@ -7,16 +7,23 @@ import { log } from './logger.js';
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.mcpServer` : 'mcpServer');
 
+export interface AdditionalSetupArgs<Context extends Record<string, unknown>> {
+  context: Context;
+  server: McpServer;
+}
+
 export const mcpServerFactory = <Context extends Record<string, unknown>>({
   name,
   version = '1.0.0',
   context,
   apiFactories,
+  additionalSetup,
 }: {
   name: string;
   version?: string;
   context: Context;
   apiFactories: readonly ApiFactory<Context, any, any>[];
+  additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
 }): { server: McpServer } => {
   const server = new McpServer(
     {
@@ -74,6 +81,8 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
       ),
     );
   }
+
+  additionalSetup?.({ context, server });
 
   return { server };
 };

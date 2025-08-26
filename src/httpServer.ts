@@ -5,7 +5,7 @@ import { mcpRouterFactory } from './http/mcp.js';
 import { apiRouterFactory } from './http/api.js';
 import { registerExitHandlers } from './registerExitHandlers.js';
 import { ApiFactory } from './types.js';
-import { mcpServerFactory } from './mcpServer.js';
+import { AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
 import { log } from './logger.js';
 import { StatusError } from './StatusError.js';
 
@@ -14,12 +14,14 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   version,
   context,
   apiFactories,
+  additionalSetup,
   cleanupFn,
 }: {
   name: string;
   version?: string;
   context: Context;
   apiFactories: readonly ApiFactory<Context, any, any>[];
+  additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
 }) => {
   const cleanupFns: (() => void | Promise<void>)[] = cleanupFn
@@ -37,6 +39,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
       version,
       context,
       apiFactories,
+      additionalSetup,
     }),
   );
   cleanupFns.push(mcpCleanup);

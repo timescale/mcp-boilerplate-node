@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { ApiFactory } from './types.js';
-import { mcpServerFactory } from './mcpServer.js';
+import { AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
 import { registerExitHandlers } from './registerExitHandlers.js';
 
 export const stdioServerFactory = async <
@@ -11,12 +11,14 @@ export const stdioServerFactory = async <
   version,
   context,
   apiFactories,
+  additionalSetup,
   cleanupFn,
 }: {
   name: string;
   version?: string;
   context: Context;
   apiFactories: readonly ApiFactory<Context, any, any>[];
+  additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => Promise<void>;
 }) => {
   try {
@@ -27,6 +29,7 @@ export const stdioServerFactory = async <
       version,
       context,
       apiFactories,
+      additionalSetup,
     });
 
     await server.connect(transport);
