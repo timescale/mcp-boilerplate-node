@@ -31,7 +31,7 @@ export const apiRouterFactory = <Context extends Record<string, unknown>>(
       try {
         parsedInput = Input.parse(input);
       } catch (error) {
-        res.status(400).json({ error: 'Invalid request data', details: error });
+        res.status(400).json({ error: 'zod validation failure', issues: (error as z.ZodError).issues });
         return;
       }
       const result = await tool.fn(parsedInput);
