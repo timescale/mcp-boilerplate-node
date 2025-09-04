@@ -26,7 +26,15 @@ export const apiRouterFactory = <Context extends Record<string, unknown>>(
         ...req.query,
         ...req.body,
       };
-      const result = await tool.fn(Input.parse(input));
+
+      let parsedInput: z.infer<typeof Input>;
+      try {
+        parsedInput = Input.parse(input);
+      } catch (error) {
+        res.status(400).json({ error: 'zod validation failure', issues: (error as z.ZodError).issues });
+        return;
+      }
+      const result = await tool.fn(parsedInput);
       res.json(tool.pickResult ? tool.pickResult(result) : result);
     });
   }
