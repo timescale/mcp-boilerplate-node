@@ -59,7 +59,8 @@ export const sdk = new NodeSDK({
   spanProcessors,
   logRecordProcessors,
   resource: resourceFromAttributes({
-    'deployment.environment.name': process.env.NODE_ENV || 'development',
+    'deployment.environment.name':
+      process.env.LOGFIRE_ENVIRONMENT || process.env.NODE_ENV || 'development',
     'service.instance.id': process.env.HOSTNAME,
   }),
 });
