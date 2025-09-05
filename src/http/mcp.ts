@@ -24,8 +24,11 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     if (sessionId && transports.has(sessionId)) {
       // Reuse existing transport
       transport = transports.get(sessionId)!;
-    } else if (!sessionId) {
-      // New initialization request
+    } else if (!sessionId || (sessionId && !transports.has(sessionId))) {
+      // New initialization request OR stale session ID (treat as new session)
+      if (sessionId && !transports.has(sessionId)) {
+        log.info(`Stale session ID ${sessionId}, creating new session`);
+      }
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (sessionId: string) => {
@@ -49,12 +52,12 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
       const { server } = createServer(context);
       await server.connect(transport);
     } else {
-      // Invalid request - no session ID or not initialization request
+      // This should never happen now, but keeping for safety
       res.status(400).json({
         jsonrpc: '2.0',
         error: {
           code: -32000,
-          message: 'Bad Request: No valid session ID provided',
+          message: 'Bad Request: Unexpected session state',
         },
         id: req?.body?.id,
       });
