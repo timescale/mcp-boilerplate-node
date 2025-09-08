@@ -7,6 +7,13 @@ import { log } from './logger.js';
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.mcpServer` : 'mcpServer');
 
+const enabledTools = process.env.MCP_ENABLED_TOOLS
+  ? new Set(process.env.MCP_ENABLED_TOOLS.split(',').map((s) => s.trim()))
+  : null;
+const disabledTools = process.env.MCP_DISABLED_TOOLS
+  ? new Set(process.env.MCP_DISABLED_TOOLS.split(',').map((s) => s.trim()))
+  : null;
+
 export interface AdditionalSetupArgs<Context extends Record<string, unknown>> {
   context: Context;
   server: McpServer;
@@ -39,6 +46,12 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
 
   for (const factory of apiFactories) {
     const tool = factory(context);
+    if (enabledTools && !enabledTools.has(tool.name)) {
+      continue;
+    }
+    if (disabledTools && disabledTools.has(tool.name)) {
+      continue;
+    }
     server.registerTool(tool.name, tool.config as any, async (args) =>
       tracer.startActiveSpan(
         `mcp.tool.${tool.name}`,
