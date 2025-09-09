@@ -9,7 +9,8 @@ import { ApiFactory, RouterFactoryResult } from '../types.js';
 
 export const apiRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
-  apiFactories: readonly ApiFactory<Context, unknown, unknown>[],
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  apiFactories: readonly ApiFactory<Context, any, any>[],
 ): RouterFactoryResult => {
   const router = Router();
 
