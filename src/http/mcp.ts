@@ -6,8 +6,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { log } from '../logger.js';
 
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
-  context: Context,
-  createServer: (context: Context) => { server: McpServer },
+  contextParam: Context,
+  createServer: (_context: Context) => { server: McpServer },
 ): RouterFactoryResult => {
   const router = Router();
 
@@ -27,14 +27,14 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     } else if (!sessionId) {
       // New initialization request
       transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (sessionId: string) => {
+        sessionIdGenerator: (): string => randomUUID(),
+        onsessioninitialized: (sessionId: string): void => {
           // Store the transport by session ID when session is initialized
           // This avoids race conditions where requests might come in before the session is stored
           log.info(`Session initialized with ID: ${sessionId}`);
           transports.set(sessionId, transport);
         },
-        onsessionclosed: (sessionId: string) => {
+        onsessionclosed: (sessionId: string): void => {
           if (sessionId && transports.has(sessionId)) {
             log.info(
               `Transport closed for session ${sessionId}, removing from transports map`,
@@ -46,7 +46,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
 
       // Connect the transport to the MCP server BEFORE handling the request
       // so responses can flow back through the same transport
-      const { server } = createServer(context);
+      const { server } = createServer(contextParam);
       await server.connect(transport);
     } else {
       // Invalid request - no session ID or not initialization request
@@ -67,7 +67,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   });
 
   // Reusable handler for GET and DELETE requests
-  const handleSessionRequest = async (req: Request, res: Response) => {
+  const handleSessionRequest = async (req: Request, res: Response): Promise<void> => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
     const transport = sessionId ? transports.get(sessionId) : null;
     if (!transport) {
@@ -84,7 +84,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   // Handle DELETE requests for session termination
   router.delete('/', handleSessionRequest);
 
-  const cleanup = async () => {
+  const cleanup = async (): Promise<void> => {
     // Close all active transports to properly clean up resources
     for (const sessionId in transports) {
       try {
