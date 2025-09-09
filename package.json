@@ -13,8 +13,8 @@
     "build": "tsc",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "lint": "eslint src/**/*.ts",
-    "lint:fix": "eslint src/**/*.ts --fix"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.1",
@@ -29,6 +29,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
     "@types/express": "^5.0.3",
     "@types/node": "^22.16.4",
     "ai": "^5.0.17",
