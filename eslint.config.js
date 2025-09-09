@@ -1,21 +1,15 @@
 import js from '@eslint/js';
-import tseslint from '@typescript-eslint/eslint-plugin';
-import tsparser from '@typescript-eslint/parser';
+import tseslint from 'typescript-eslint';
 
 export default [
   js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     files: ['src/**/*.ts'],
     languageOptions: {
-      parser: tsparser,
       parserOptions: {
-        ecmaVersion: 2022,
-        sourceType: 'module',
         project: './tsconfig.json',
       },
-    },
-    plugins: {
-      '@typescript-eslint': tseslint,
     },
     rules: {
       // Disable base rule for unused vars and use TypeScript-specific one
