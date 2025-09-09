@@ -20,7 +20,7 @@ export const stdioServerFactory = async <
   apiFactories: readonly ApiFactory<Context, any, any>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => Promise<void>;
-}) => {
+}): Promise<void> => {
   try {
     console.error('Starting default (STDIO) server...');
     const transport = new StdioServerTransport();
@@ -36,10 +36,12 @@ export const stdioServerFactory = async <
 
     // Cleanup on exit
     registerExitHandlers([
-      async () => {
+      async (): Promise<void> => {
         await server.close();
       },
-      async () => cleanupFn?.(),
+      async (): Promise<void> => {
+        await cleanupFn?.();
+      },
     ]);
   } catch (error) {
     console.error('Server error:', error);

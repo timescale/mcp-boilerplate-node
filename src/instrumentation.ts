@@ -70,7 +70,7 @@ sdk.start();
 
 log.info('OpenTelemetry initialized');
 
-export const cleanup = async () => {
+export const cleanup = async (): Promise<void> => {
   try {
     await Promise.all(spanProcessors.map((sp) => sp.shutdown()));
     await Promise.all(logRecordProcessors.map((lp) => lp.shutdown()));

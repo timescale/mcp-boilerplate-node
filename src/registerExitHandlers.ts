@@ -4,8 +4,8 @@ let handlingExit = false;
 
 export const registerExitHandlers = (
   cleanupFns: (() => void | Promise<void>)[],
-) => {
-  const exitHandler = (code = 0) => {
+): ((code?: number) => void) => {
+  const exitHandler = (code = 0): void => {
     if (handlingExit) return;
     handlingExit = true;
 
