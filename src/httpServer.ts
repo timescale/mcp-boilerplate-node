@@ -8,6 +8,7 @@ import { ApiFactory } from './types.js';
 import { AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
 import { log } from './logger.js';
 import { StatusError } from './StatusError.js';
+import { Server } from 'node:http';
 
 export const httpServerFactory = <Context extends Record<string, unknown>>({
   name,
@@ -23,7 +24,13 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   apiFactories: readonly ApiFactory<Context, any, any>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
-}) => {
+}): {
+  app: express.Express;
+  server: Server;
+  apiRouter: express.Router;
+  mcpRouter: express.Router;
+  registerCleanupFn: (fn: () => Promise<void>) => void;
+} => {
   const cleanupFns: (() => void | Promise<void>)[] = cleanupFn
     ? [cleanupFn]
     : [];
@@ -54,7 +61,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
     err: Error,
     req: Request,
     res: Response,
-    next: NextFunction,
+    _next: NextFunction,
   ) {
     if (err instanceof StatusError && err.status < 500) {
       log.info('HTTP error response', {
@@ -88,7 +95,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
     server,
     apiRouter,
     mcpRouter,
-    registerCleanupFn: (fn: () => Promise<void>) => {
+    registerCleanupFn: (fn: () => Promise<void>): void => {
       cleanupFns.push(fn);
     },
   };

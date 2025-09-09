@@ -19,7 +19,7 @@ export const withSpan = async <T>(
   });
 };
 
-const getToolContent = (content: ToolResultPart) => {
+const getToolContent = (content: ToolResultPart): any => {
   const { type, value } = content.output;
   if (type === 'json' && value) {
     if (typeof value === 'object' && 'structuredContent' in value) {
@@ -34,7 +34,10 @@ const getToolContent = (content: ToolResultPart) => {
   return content.output;
 };
 
-const annotateModelMessage = (m: ModelMessage, i: number) => {
+const annotateModelMessage = (
+  m: ModelMessage,
+  i: number,
+): Record<string, any> => {
   const msg: Record<string, any> = {
     ...m,
     'event.name': `gen_ai.${m.role}.message`,
@@ -53,7 +56,7 @@ export const addAiResultToSpan = (
   span: Span,
   aiResult: GenerateTextResult<any, unknown>,
   inputMessages: ModelMessage[],
-) => {
+): void => {
   span.setAttribute('final_result', aiResult.text);
   const messages = [...inputMessages, ...aiResult.response.messages].map(
     annotateModelMessage,
