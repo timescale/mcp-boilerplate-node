@@ -42,7 +42,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
     {
       capabilities: {
         tools: {},
-        prompts: {},
+        ...(promptFactories.length ? { prompts: {} } : null),
       },
     },
   );
@@ -107,10 +107,6 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
           span.setAttribute('mcp.prompt.args', JSON.stringify(args));
           try {
             const result = await prompt.fn(args as any);
-            const text = Array.isArray(result.messages) 
-              ? result.messages.map(m => m.content.text).join('\n')
-              : '';
-            span.setAttribute('mcp.prompt.responseBytes', text.length);
             span.setStatus({ code: SpanStatusCode.OK });
             return result;
           } catch (error) {
