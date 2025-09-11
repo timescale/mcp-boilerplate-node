@@ -17,6 +17,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   apiFactories,
   additionalSetup,
   cleanupFn,
+  stateful = false,
 }: {
   name: string;
   version?: string;
@@ -24,6 +25,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   apiFactories: readonly ApiFactory<Context, any, any>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
+  stateful?: boolean;
 }): {
   app: express.Express;
   server: Server;
@@ -40,14 +42,17 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
 
   const app = express();
 
-  const [mcpRouter, mcpCleanup] = mcpRouterFactory(context, () =>
-    mcpServerFactory({
-      name,
-      version,
-      context,
-      apiFactories,
-      additionalSetup,
-    }),
+  const [mcpRouter, mcpCleanup] = mcpRouterFactory(
+    context,
+    () =>
+      mcpServerFactory({
+        name,
+        version,
+        context,
+        apiFactories,
+        additionalSetup,
+      }),
+    stateful,
   );
   cleanupFns.push(mcpCleanup);
   app.use('/mcp', mcpRouter);

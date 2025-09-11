@@ -1,13 +1,16 @@
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { Request, Response, Router } from 'express';
 import { randomUUID } from 'node:crypto';
+import getRawBody from 'raw-body';
 import { RouterFactoryResult } from '../types.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { log } from '../logger.js';
 
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
   createServer: (context: Context) => { server: McpServer },
+  stateful = false,
 ): RouterFactoryResult => {
   const router = Router();
 
@@ -16,21 +19,66 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     StreamableHTTPServerTransport
   >();
 
-  router.post('/', async (req: Request, res: Response) => {
-    // Check for existing session ID
+  const handleStatelessRequest = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
+    const { server } = createServer(context);
+    const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: undefined,
+    });
+    res.on('close', () => {
+      transport.close();
+      server.close();
+    });
+    await server.connect(transport);
+    await transport.handleRequest(req, res, req.body);
+  }
+
+  const handleStatefulRequest = async (
+    req: Request,
+    res: Response,
+  ): Promise<void> => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
     let transport: StreamableHTTPServerTransport;
+    let body = req.body;
 
-    if (sessionId && transports.has(sessionId)) {
-      // Reuse existing transport
+    if (sessionId) {
+      if (!transports.has(sessionId)) {
+        res.status(404).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: 'Not Found: No session found for that ID',
+          },
+          id: sessionId,
+        });
+        return;
+      }
       transport = transports.get(sessionId)!;
-    } else if (!sessionId) {
-      // New initialization request
+    } else {
+      if (!body) {
+        body = await getRawBody(req, {
+          limit: '4mb',
+          encoding: 'utf-8',
+        });
+        body = JSON.parse(body.toString());
+      }
+      if (!isInitializeRequest(body)) {
+        res.status(400).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32000,
+            message: 'Invalid request: Missing session ID',
+          },
+          id: null,
+        });
+        return;
+      }
+
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: (): string => randomUUID(),
         onsessioninitialized: (sessionId: string): void => {
-          // Store the transport by session ID when session is initialized
-          // This avoids race conditions where requests might come in before the session is stored
           log.info(`Session initialized with ID: ${sessionId}`);
           transports.set(sessionId, transport);
         },
@@ -44,26 +92,32 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
         },
       });
 
-      // Connect the transport to the MCP server BEFORE handling the request
-      // so responses can flow back through the same transport
       const { server } = createServer(context);
       await server.connect(transport);
-    } else {
-      // Invalid request - no session ID or not initialization request
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: No valid session ID provided',
-        },
-        id: req?.body?.id,
-      });
-      return;
     }
 
-    // Handle the request with existing transport - no need to reconnect
-    // The existing transport is already connected to the server
-    await transport.handleRequest(req, res);
+    await transport.handleRequest(req, res, body);
+  }
+
+  router.post('/', async (req: Request, res: Response) => {
+    try {
+      await (stateful
+        ? handleStatefulRequest(req, res)
+        : handleStatelessRequest(req, res)
+      );
+    } catch (error) {
+      log.error('Error handling MCP request:', error as Error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          jsonrpc: '2.0',
+          error: {
+            code: -32603,
+            message: 'Internal server error',
+          },
+          id: null,
+        });
+      }
+    }
   });
 
   // Reusable handler for GET and DELETE requests
@@ -72,13 +126,43 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     res: Response,
   ): Promise<void> => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    const transport = sessionId ? transports.get(sessionId) : null;
-    if (!transport) {
-      res.status(400).send('Invalid or missing session ID');
+    if (!stateful) {
+      res.status(405).json({
+        jsonrpc: "2.0",
+        error: {
+          code: -32000,
+          message: "Method not allowed."
+        },
+        id: null
+      });
       return;
     }
 
-    await transport.handleRequest(req, res);
+    if (!sessionId) {
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Invalid request: Missing session ID',
+        },
+        id: null,
+      });
+      return;
+    }
+
+    if (!transports.get(sessionId)) {
+      res.status(404).json({
+        jsonrpc: '2.0',
+        error: {
+          code: -32000,
+          message: 'Not Found: No session found for that ID',
+        },
+        id: sessionId,
+      });
+      return;
+    }
+
+    await transports.get(sessionId)!.handleRequest(req, res);
   };
 
   // Handle GET requests for server-to-client notifications via SSE
