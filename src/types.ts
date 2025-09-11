@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { ZodRawShape, ZodTypeAny } from 'zod';
-import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js';
+import type { ToolAnnotations, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
 import { Router } from 'express';
 
 export type ToolConfig<
@@ -40,3 +40,22 @@ export type ApiFactory<
 > = (ctx: Context) => ApiDefinition<Input, Output, RestOutput>;
 
 export type RouterFactoryResult = [Router, () => void | Promise<void>];
+
+export type PromptConfig<InputArgs extends ZodRawShape> = {
+  title?: string;
+  description?: string;
+  inputSchema: InputArgs;
+};
+
+export interface PromptDefinition<InputArgs extends ZodRawShape> {
+  name: string;
+  config: PromptConfig<InputArgs>;
+  fn: (
+    args: z.objectOutputType<InputArgs, ZodTypeAny>,
+  ) => Promise<GetPromptResult>;
+}
+
+export type PromptFactory<
+  Context extends Record<string, unknown>,
+  Input extends ZodRawShape,
+> = (ctx: Context) => PromptDefinition<Input>;
