@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { ApiFactory, PromptFactory, ToolConfig } from './types.js';
+import { ApiFactory, PromptFactory } from './types.js';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { CallToolResult, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
 import { log } from './logger.js';
