@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { ApiFactory, PromptFactory } from './types.js';
+import { ApiFactory, PromptFactory, ToolConfig } from './types.js';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { CallToolResult, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
 import { log } from './logger.js';
@@ -55,46 +55,59 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
     if (disabledTools && disabledTools.has(tool.name)) {
       continue;
     }
-    server.registerTool(tool.name, tool.config as any, async (args) =>
-      tracer.startActiveSpan(
-        `mcp.tool.${tool.name}`,
-        async (span): Promise<CallToolResult> => {
-          span.setAttribute('mcp.tool.args', JSON.stringify(args));
-          try {
-            const result = await tool.fn(args as any);
-            const text = JSON.stringify(result);
-            span.setAttribute('mcp.tool.responseBytes', text.length);
-            span.setStatus({ code: SpanStatusCode.OK });
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text,
-                },
-              ],
-              structuredContent: result,
-            };
-          } catch (error) {
-            log.error('Error invoking tool:', error as Error);
-            span.recordException(error as Error);
-            span.setStatus({
-              code: SpanStatusCode.ERROR,
-              message: (error as Error).message,
-            });
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: `Error: ${(error as Error).message || 'Unknown error'}`,
-                },
-              ],
-              isError: true,
-            };
-          } finally {
-            span.end();
-          }
+    server.registerTool(
+      tool.name,
+      {
+        ...tool.config,
+        annotations: {
+          ...tool.config.annotations,
+          // Some clients (e.g. claude code) do not yet support the title field
+          // at the top level and instead expect it in annotations. We also
+          // don't allow setting different titles in two places as that doesn't
+          // make sense.
+          title: tool.config.title,
         },
-      ),
+      },
+      async (args: { [x: string]: any }) =>
+        tracer.startActiveSpan(
+          `mcp.tool.${tool.name}`,
+          async (span): Promise<CallToolResult> => {
+            span.setAttribute('mcp.tool.args', JSON.stringify(args));
+            try {
+              const result = await tool.fn(args as any);
+              const text = JSON.stringify(result);
+              span.setAttribute('mcp.tool.responseBytes', text.length);
+              span.setStatus({ code: SpanStatusCode.OK });
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text,
+                  },
+                ],
+                structuredContent: result,
+              };
+            } catch (error) {
+              log.error('Error invoking tool:', error as Error);
+              span.recordException(error as Error);
+              span.setStatus({
+                code: SpanStatusCode.ERROR,
+                message: (error as Error).message,
+              });
+              return {
+                content: [
+                  {
+                    type: 'text',
+                    text: `Error: ${(error as Error).message || 'Unknown error'}`,
+                  },
+                ],
+                isError: true,
+              };
+            } finally {
+              span.end();
+            }
+          },
+        ),
     );
   }
 
