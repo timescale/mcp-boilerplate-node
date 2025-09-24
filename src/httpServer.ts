@@ -17,7 +17,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   apiFactories,
   additionalSetup,
   cleanupFn,
-  stateful = false,
+  stateful = true,
 }: {
   name: string;
   version?: string;
