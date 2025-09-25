@@ -10,7 +10,7 @@ import { log } from '../logger.js';
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
   createServer: (context: Context) => { server: McpServer },
-  stateful = false,
+  stateful = true,
 ): RouterFactoryResult => {
   const router = Router();
 
