@@ -23,6 +23,7 @@ export interface ApiDefinition<
   method?: 'get' | 'post' | 'put' | 'delete';
   route?: string | string[];
   config: ToolConfig<InputArgs, OutputArgs>;
+  disabled?: boolean;
   fn: (
     args: z.objectOutputType<InputArgs, ZodTypeAny>,
   ) => Promise<z.objectOutputType<OutputArgs, ZodTypeAny>>;

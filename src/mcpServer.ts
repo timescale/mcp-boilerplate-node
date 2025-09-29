@@ -49,6 +49,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
 
   for (const factory of apiFactories) {
     const tool = factory(context);
+    if (tool.disabled) continue;
     if (enabledTools && !enabledTools.has(tool.name)) {
       continue;
     }
