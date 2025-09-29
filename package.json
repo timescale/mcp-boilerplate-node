@@ -5,6 +5,10 @@
   "license": "UNLICENSED",
   "author": "TigerData",
   "homepage": "https://tigerdata.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timescale/mcp-boilerplate-node"
+  },
   "type": "module",
   "files": [
     "dist"
