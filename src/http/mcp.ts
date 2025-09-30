@@ -176,7 +176,10 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     if (req.accepts('html')) {
       const proto = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.headers['x-forwarded-host'] || req.get('host');
-      const path = req.headers['x-original-uri'] || req.originalUrl;
+      const path =
+        req.headers['x-original-request-uri'] ||
+        req.headers['x-original-uri'] ||
+        req.originalUrl;
       const fullUrl = `${proto}://${host}${path}`;
       res.send(`<!DOCTYPE html>
 <html>
