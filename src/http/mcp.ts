@@ -10,7 +10,13 @@ import { log } from '../logger.js';
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
   createServer: (context: Context) => { server: McpServer },
-  stateful = true,
+  {
+    name,
+    stateful = true,
+  }: {
+    name?: string;
+    stateful?: boolean;
+  } = {},
 ): RouterFactoryResult => {
   const router = Router();
 
@@ -24,16 +30,17 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     res: Response,
   ): Promise<void> => {
     const { server } = createServer(context);
-    const transport: StreamableHTTPServerTransport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: undefined,
-    });
+    const transport: StreamableHTTPServerTransport =
+      new StreamableHTTPServerTransport({
+        sessionIdGenerator: undefined,
+      });
     res.on('close', () => {
       transport.close();
       server.close();
     });
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
-  }
+  };
 
   const handleStatefulRequest = async (
     req: Request,
@@ -97,14 +104,13 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     }
 
     await transport.handleRequest(req, res, body);
-  }
+  };
 
   router.post('/', async (req: Request, res: Response) => {
     try {
       await (stateful
         ? handleStatefulRequest(req, res)
-        : handleStatelessRequest(req, res)
-      );
+        : handleStatelessRequest(req, res));
     } catch (error) {
       log.error('Error handling MCP request:', error as Error);
       if (!res.headersSent) {
@@ -128,12 +134,12 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
     if (!stateful) {
       res.status(405).json({
-        jsonrpc: "2.0",
+        jsonrpc: '2.0',
         error: {
           code: -32000,
-          message: "Method not allowed."
+          message: 'Method not allowed.',
         },
-        id: null
+        id: null,
       });
       return;
     }
@@ -166,7 +172,27 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   };
 
   // Handle GET requests for server-to-client notifications via SSE
-  router.get('/', handleSessionRequest);
+  router.get('/', (req, res) => {
+    if (req.accepts('html')) {
+      res.send(`<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+</head>
+<body>
+  <h1>${name}</h1>
+  <h2>Model Context Protocol (MCP) Server</h2>
+  <p>This endpoint is used for MCP communication. Please use an MCP-compatible client to interact with this server.</p>
+
+  <h3>Claude Code</h3>
+  <p>To connect to this MCP server using Claude Code, run the following command in your terminal:</p>
+  <pre><code>claude mcp add --transport http ${name || req.get('host')} ${req.protocol}://${req.get('host')}${req.originalUrl}</code></pre>
+</body>
+</html>`);
+      return;
+    }
+    handleSessionRequest(req, res);
+  });
 
   // Handle DELETE requests for session termination
   router.delete('/', handleSessionRequest);

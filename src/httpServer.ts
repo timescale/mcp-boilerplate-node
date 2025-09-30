@@ -55,7 +55,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
         promptFactories,
         additionalSetup,
       }),
-    stateful,
+    { name, stateful },
   );
   cleanupFns.push(mcpCleanup);
   app.use('/mcp', mcpRouter);
