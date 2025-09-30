@@ -43,6 +43,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   log.info('Starting HTTP server...');
 
   const app = express();
+  app.enable('trust proxy');
 
   const [mcpRouter, mcpCleanup] = mcpRouterFactory(
     context,

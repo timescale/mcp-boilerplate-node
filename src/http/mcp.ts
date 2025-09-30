@@ -174,6 +174,10 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   // Handle GET requests for server-to-client notifications via SSE
   router.get('/', (req, res) => {
     if (req.accepts('html')) {
+      const proto = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const path = req.headers['x-original-uri'] || req.originalUrl;
+      const fullUrl = `${proto}://${host}${path}`;
       res.send(`<!DOCTYPE html>
 <html>
 <head>
@@ -186,7 +190,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
 
   <h3>Claude Code</h3>
   <p>To connect to this MCP server using Claude Code, run the following command in your terminal:</p>
-  <pre><code>claude mcp add --transport http ${name || req.get('host')} ${req.protocol}://${req.get('host')}${req.originalUrl}</code></pre>
+  <pre><code>claude mcp add --transport http ${name || req.get('host')} ${fullUrl}</code></pre>
 </body>
 </html>`);
       return;
