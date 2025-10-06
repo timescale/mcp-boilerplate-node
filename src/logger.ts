@@ -15,9 +15,11 @@ interface LogInterface {
 }
 
 // Helper functions to replace console.log
+// We use console.error for all levels so that messages are written to stderr
+// and not stdout, which would interfere with the stdio MCP transport.
 export const log: LogInterface = {
   debug: (...args) => {
-    console.debug(...args);
+    console.error(...args);
     const [body, attributes] = args;
     logger.emit({
       severityText: 'DEBUG',
@@ -32,7 +34,7 @@ export const log: LogInterface = {
   },
 
   info: (...args) => {
-    console.info(...args);
+    console.error(...args);
     const [body, attributes] = args;
     logger.emit({
       severityText: 'INFO',
@@ -47,7 +49,7 @@ export const log: LogInterface = {
   },
 
   warn: (...args) => {
-    console.warn(...args);
+    console.error(...args);
     const [body, attributes] = args;
     logger.emit({
       severityText: 'WARN',
