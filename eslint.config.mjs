@@ -12,7 +12,7 @@ export default defineConfig(
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {
-    files: ['src/**/*.ts', '*.mjs'],
+    files: ['src/**/*.ts'],
     languageOptions: {
       parserOptions: {
         project: './tsconfig.json',
