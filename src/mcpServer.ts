@@ -1,7 +1,16 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ApiFactory, PromptFactory } from './types.js';
-import { SpanStatusCode, trace } from '@opentelemetry/api';
-import { CallToolResult, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+import {
+  SpanStatusCode,
+  trace,
+  context as otelContext,
+  propagation,
+  SpanKind,
+} from '@opentelemetry/api';
+import {
+  CallToolResult,
+  GetPromptResult,
+} from '@modelcontextprotocol/sdk/types.js';
 import { log } from './logger.js';
 
 const name = process.env.OTEL_SERVICE_NAME;
@@ -69,9 +78,19 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
           title: tool.config.title,
         },
       },
-      async (args: { [x: string]: any }) =>
-        tracer.startActiveSpan(
+      async (args: { [x: string]: any }, extra) => {
+        let traceContext = otelContext.active();
+        if (extra?._meta?.traceparent) {
+          // Some MCP clients (e.g. pydantic) pass the parent trace context
+          traceContext = propagation.extract(traceContext, {
+            traceparent: extra._meta.traceparent,
+            tracestate: extra._meta.tracestate,
+          });
+        }
+        return tracer.startActiveSpan(
           `mcp.tool.${tool.name}`,
+          { kind: SpanKind.SERVER },
+          traceContext,
           async (span): Promise<CallToolResult> => {
             span.setAttribute('mcp.tool.args', JSON.stringify(args));
             try {
@@ -108,7 +127,8 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
               span.end();
             }
           },
-        ),
+        );
+      },
     );
   }
 
