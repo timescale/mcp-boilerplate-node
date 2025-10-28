@@ -1,11 +1,22 @@
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import {
+  trace,
+  context as otelContext,
+  propagation,
+  SpanKind,
+  SpanStatusCode,
+} from '@opentelemetry/api';
+import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventions';
 import { Request, Response, Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import getRawBody from 'raw-body';
 import { RouterFactoryResult } from '../types.js';
 import { log } from '../logger.js';
+
+const name = process.env.OTEL_SERVICE_NAME;
+const tracer = trace.getTracer(name ? `${name}.router.mcp` : 'router.mcp');
 
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
@@ -107,23 +118,46 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   };
 
   router.post('/', async (req: Request, res: Response) => {
-    try {
-      await (stateful
-        ? handleStatefulRequest(req, res)
-        : handleStatelessRequest(req, res));
-    } catch (error) {
-      log.error('Error handling MCP request:', error as Error);
-      if (!res.headersSent) {
-        res.status(500).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32603,
-            message: 'Internal server error',
-          },
-          id: null,
-        });
-      }
+    let traceContext = otelContext.active();
+    if (req.headers.traceparent) {
+      // Some MCP clients (e.g. pydantic) pass the parent trace context
+      traceContext = propagation.extract(traceContext, {
+        traceparent: req.headers.traceparent,
+      });
     }
+    await tracer.startActiveSpan(
+      'mcp.http.post',
+      { kind: SpanKind.SERVER },
+      traceContext,
+      async (span) => {
+        try {
+          await (stateful
+            ? handleStatefulRequest(req, res)
+            : handleStatelessRequest(req, res));
+          span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
+          span.setStatus({ code: SpanStatusCode.OK });
+        } catch (error) {
+          log.error('Error handling MCP request:', error as Error);
+          span.recordException(error as Error);
+          span.setStatus({
+            code: SpanStatusCode.ERROR,
+            message: (error as Error).message,
+          });
+          if (!res.headersSent) {
+            res.status(500).json({
+              jsonrpc: '2.0',
+              error: {
+                code: -32603,
+                message: 'Internal server error',
+              },
+              id: null,
+            });
+          }
+        } finally {
+          span.end();
+        }
+      },
+    );
   });
 
   // Reusable handler for GET and DELETE requests
