@@ -25,7 +25,8 @@ export async function cliEntrypoint(
           args.includes('--instrument') ||
           process.env.INSTRUMENT === 'true'
         ) {
-          ({ cleanup } = await import(instrumentation));
+          const { instrument } = await import(instrumentation);
+          ({ cleanup } = instrument());
         }
         // Import and run the HTTP server
         const { registerCleanupFn } = await import(httpEntrypoint);
