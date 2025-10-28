@@ -16,6 +16,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./instrumentation": {
+      "import": "./dist/instrumentation.js",
+      "types": "./dist/instrumentation.d.ts"
     }
   },
   "files": [
