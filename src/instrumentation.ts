@@ -6,39 +6,91 @@ import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentation
 import {
   BatchSpanProcessor,
   SpanProcessor,
+  ReadableSpan,
 } from '@opentelemetry/sdk-trace-base';
 import {
   BatchLogRecordProcessor,
   LogRecordProcessor,
 } from '@opentelemetry/sdk-logs';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-http';
+import { Context } from '@opentelemetry/api';
 import { log } from './logger.js';
+
+/**
+ * Custom span processor that filters out specific HTTP errors before sending to exporters.
+ * This prevents noise from expected errors (like 405 Method Not Allowed for GET requests).
+ */
+class FilteringSpanProcessor implements SpanProcessor {
+  private readonly wrapped: SpanProcessor;
+
+  constructor(wrapped: SpanProcessor) {
+    this.wrapped = wrapped;
+  }
+
+  onStart(span: Parameters<SpanProcessor['onStart']>[0], parentContext: Context): void {
+    this.wrapped.onStart(span, parentContext);
+  }
+
+  onEnd(span: ReadableSpan): void {
+    // Filter out 405 errors for GET requests on /mcp endpoint
+    const httpMethod = span.attributes['http.method'] || span.attributes['http.request.method'];
+    const httpStatusCode = span.attributes['http.status_code'] || span.attributes['http.response.status_code'];
+    const httpTarget = span.attributes['http.target'] || span.attributes['url.path'];
+
+    if (
+      httpMethod === 'GET' &&
+      httpStatusCode === 405 &&
+      (httpTarget === '/mcp' || httpTarget === '/mcp/')
+    ) {
+      // Don't send this span to the exporter
+      return;
+    }
+
+    this.wrapped.onEnd(span);
+  }
+
+  async forceFlush(): Promise<void> {
+    return this.wrapped.forceFlush();
+  }
+
+  async shutdown(): Promise<void> {
+    return this.wrapped.shutdown();
+  }
+}
 
 const spanProcessors: SpanProcessor[] = [];
 const logRecordProcessors: LogRecordProcessor[] = [];
 
 if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-  spanProcessors.push(new BatchSpanProcessor(new GrpcTraceExporter()));
+  spanProcessors.push(
+    new FilteringSpanProcessor(
+      new BatchSpanProcessor(new GrpcTraceExporter())
+    )
+  );
 }
 if (process.env.JAEGER_TRACES_ENDPOINT) {
   spanProcessors.push(
-    new BatchSpanProcessor(
-      new GrpcTraceExporter({
-        url: process.env.JAEGER_TRACES_ENDPOINT,
-      }),
-    ),
+    new FilteringSpanProcessor(
+      new BatchSpanProcessor(
+        new GrpcTraceExporter({
+          url: process.env.JAEGER_TRACES_ENDPOINT,
+        }),
+      ),
+    )
   );
 }
 if (process.env.LOGFIRE_TRACES_ENDPOINT) {
   spanProcessors.push(
-    new BatchSpanProcessor(
-      new HttpTraceExporter({
-        url: process.env.LOGFIRE_TRACES_ENDPOINT,
-        headers: process.env.LOGFIRE_TOKEN
-          ? { Authorization: `Bearer ${process.env.LOGFIRE_TOKEN}` }
-          : {},
-      }),
-    ),
+    new FilteringSpanProcessor(
+      new BatchSpanProcessor(
+        new HttpTraceExporter({
+          url: process.env.LOGFIRE_TRACES_ENDPOINT,
+          headers: process.env.LOGFIRE_TOKEN
+            ? { Authorization: `Bearer ${process.env.LOGFIRE_TOKEN}` }
+            : {},
+        }),
+      ),
+    )
   );
 }
 if (process.env.LOGFIRE_LOGS_ENDPOINT) {
