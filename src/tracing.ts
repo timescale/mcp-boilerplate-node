@@ -1,4 +1,4 @@
-import type { Span, Tracer } from '@opentelemetry/api';
+import { SpanStatusCode, type Span, type Tracer } from '@opentelemetry/api';
 import type { GenerateTextResult, ModelMessage, ToolResultPart } from 'ai';
 import { log } from './logger.js';
 
@@ -12,6 +12,11 @@ export const withSpan = async <T>(
       return await fn(span);
     } catch (error) {
       log.error(`Error in span ${name}`, error as Error);
+      span.recordException(error as Error);
+      span.setStatus({
+        code: SpanStatusCode.ERROR,
+        message: (error as Error).message,
+      });
       throw error;
     } finally {
       span.end();
