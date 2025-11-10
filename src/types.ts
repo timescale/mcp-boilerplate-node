@@ -1,7 +1,17 @@
 import { z } from 'zod';
 import type { ZodRawShape, ZodTypeAny } from 'zod';
-import type { ToolAnnotations, GetPromptResult } from '@modelcontextprotocol/sdk/types.js';
+import type {
+  ToolAnnotations,
+  GetPromptResult,
+} from '@modelcontextprotocol/sdk/types.js';
 import { Router } from 'express';
+import {
+  CompleteResourceTemplateCallback,
+  ListResourcesCallback,
+  ReadResourceCallback,
+  ReadResourceTemplateCallback,
+  ResourceMetadata,
+} from '@modelcontextprotocol/sdk/server/mcp.js';
 
 export type ToolConfig<
   InputArgs extends ZodRawShape,
@@ -38,7 +48,10 @@ export type ApiFactory<
   Input extends ZodRawShape,
   Output extends ZodRawShape,
   RestOutput = Output,
-> = (ctx: Context) => ApiDefinition<Input, Output, RestOutput>;
+> = (
+  ctx: Context,
+  featureFlags: McpFeatureFlags,
+) => ApiDefinition<Input, Output, RestOutput>;
 
 export type RouterFactoryResult = [Router, () => void | Promise<void>];
 
@@ -51,6 +64,7 @@ export type PromptConfig<InputArgs extends ZodRawShape> = {
 export interface PromptDefinition<InputArgs extends ZodRawShape> {
   name: string;
   config: PromptConfig<InputArgs>;
+  disabled?: boolean;
   fn: (
     args: z.objectOutputType<InputArgs, ZodTypeAny>,
   ) => Promise<GetPromptResult>;
@@ -59,4 +73,52 @@ export interface PromptDefinition<InputArgs extends ZodRawShape> {
 export type PromptFactory<
   Context extends Record<string, unknown>,
   Input extends ZodRawShape,
-> = (ctx: Context) => PromptDefinition<Input>;
+> = (ctx: Context, featureFlags: McpFeatureFlags) => PromptDefinition<Input>;
+
+export interface TemplatedResourceDefinition {
+  type: 'templated';
+  name: string;
+  uriTemplate: string;
+  list?: ListResourcesCallback;
+  complete?: {
+    [variable: string]: CompleteResourceTemplateCallback;
+  };
+  config: ResourceMetadata;
+  disabled?: boolean;
+  read: ReadResourceTemplateCallback;
+}
+
+export interface StaticResourceDefinition {
+  type: 'static';
+  name: string;
+  uri: string;
+  config: ResourceMetadata;
+  disabled?: boolean;
+  read: ReadResourceCallback;
+}
+
+export type ResourceDefinition =
+  | TemplatedResourceDefinition
+  | StaticResourceDefinition;
+
+export type ResourceFactory<Context extends Record<string, unknown>> = (
+  ctx: Context,
+  featureFlags: McpFeatureFlags,
+) => ResourceDefinition;
+
+export interface ParsedQs {
+  [key: string]: undefined | string | ParsedQs | (string | ParsedQs)[];
+}
+
+export interface McpFeatureFlags {
+  prompts?: boolean;
+  enabledPrompts?: Set<string> | null;
+  disabledPrompts?: Set<string> | null;
+  resources?: boolean;
+  enabledResources?: Set<string> | null;
+  disabledResources?: Set<string> | null;
+  tools?: boolean;
+  enabledTools?: Set<string> | null;
+  disabledTools?: Set<string> | null;
+  query?: ParsedQs;
+}

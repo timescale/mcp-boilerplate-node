@@ -12,7 +12,7 @@ import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventi
 import { Request, Response, Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import getRawBody from 'raw-body';
-import { RouterFactoryResult } from '../types.js';
+import { RouterFactoryResult, McpFeatureFlags, ParsedQs } from '../types.js';
 import { log } from '../logger.js';
 
 const name = process.env.OTEL_SERVICE_NAME;
@@ -20,7 +20,10 @@ const tracer = trace.getTracer(name ? `${name}.router.mcp` : 'router.mcp');
 
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
-  createServer: (context: Context) => { server: McpServer },
+  createServer: (
+    context: Context,
+    featureFlags: McpFeatureFlags,
+  ) => { server: McpServer },
   {
     name,
     stateful = true,
@@ -36,11 +39,39 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     StreamableHTTPServerTransport
   >();
 
+  const sessionFeatureFlags: Map<string, McpFeatureFlags> = new Map<
+    string,
+    McpFeatureFlags
+  >();
+
+  const toSet = (flag: ParsedQs[string]): Set<string> | null =>
+    flag
+      ? Array.isArray(flag)
+        ? new Set(flag as string[])
+        : typeof flag === 'string'
+          ? new Set(flag.split(',').map((s) => s.trim()))
+          : null
+      : null;
+
+  const parseFeatureFlags = (req: Request): McpFeatureFlags => ({
+    prompts: req.query.prompts !== 'false' && req.query.prompts !== '0',
+    enabledPrompts: toSet(req.query.enabled_prompts),
+    disabledPrompts: toSet(req.query.disabled_prompts),
+    resources: req.query.resources !== 'false' && req.query.resources !== '0',
+    enabledResources: toSet(req.query.enabled_resources),
+    disabledResources: toSet(req.query.disabled_resources),
+    tools: req.query.tools !== 'false' && req.query.tools !== '0',
+    enabledTools: toSet(req.query.enabled_tools),
+    disabledTools: toSet(req.query.disabled_tools),
+    query: req.query,
+  });
+
   const handleStatelessRequest = async (
     req: Request,
     res: Response,
   ): Promise<void> => {
-    const { server } = createServer(context);
+    const featureFlags = parseFeatureFlags(req);
+    const { server } = createServer(context, featureFlags);
     const transport: StreamableHTTPServerTransport =
       new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
@@ -94,11 +125,14 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
         return;
       }
 
+      const featureFlags = parseFeatureFlags(req);
+
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: (): string => randomUUID(),
         onsessioninitialized: (sessionId: string): void => {
           log.info(`Session initialized with ID: ${sessionId}`);
           transports.set(sessionId, transport);
+          sessionFeatureFlags.set(sessionId, featureFlags);
         },
         onsessionclosed: (sessionId: string): void => {
           if (sessionId && transports.has(sessionId)) {
@@ -106,11 +140,12 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
               `Transport closed for session ${sessionId}, removing from transports map`,
             );
             transports.delete(sessionId);
+            sessionFeatureFlags.delete(sessionId);
           }
         },
       });
 
-      const { server } = createServer(context);
+      const { server } = createServer(context, featureFlags);
       await server.connect(transport);
     }
 

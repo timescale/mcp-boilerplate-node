@@ -4,7 +4,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { mcpRouterFactory } from './http/mcp.js';
 import { apiRouterFactory } from './http/api.js';
 import { registerExitHandlers } from './registerExitHandlers.js';
-import { ApiFactory, PromptFactory } from './types.js';
+import { ApiFactory, PromptFactory, ResourceFactory } from './types.js';
 import { AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
 import { log } from './logger.js';
 import { StatusError } from './StatusError.js';
@@ -15,7 +15,8 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   version,
   context,
   apiFactories = [],
-  promptFactories = [],
+  promptFactories,
+  resourceFactories,
   additionalSetup,
   cleanupFn,
   stateful = true,
@@ -25,6 +26,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   context: Context;
   apiFactories?: readonly ApiFactory<Context, any, any>[];
   promptFactories?: readonly PromptFactory<Context, any>[];
+  resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
   stateful?: boolean;
@@ -47,14 +49,16 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
 
   const [mcpRouter, mcpCleanup] = mcpRouterFactory(
     context,
-    () =>
+    (context, featureFlags) =>
       mcpServerFactory({
         name,
         version,
         context,
         apiFactories,
         promptFactories,
+        resourceFactories,
         additionalSetup,
+        featureFlags,
       }),
     { name, stateful },
   );

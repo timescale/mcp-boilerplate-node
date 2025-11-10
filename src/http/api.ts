@@ -16,7 +16,7 @@ export const apiRouterFactory = <Context extends Record<string, unknown>>(
   router.use(bodyParser.json());
 
   for (const factory of apiFactories) {
-    const tool = factory(context);
+    const tool = factory(context, {});
     if (!tool.method || !tool.route) continue;
 
     router[tool.method](tool.route, async (req, res) => {
@@ -31,12 +31,10 @@ export const apiRouterFactory = <Context extends Record<string, unknown>>(
       try {
         parsedInput = Input.parse(input);
       } catch (error) {
-        res
-          .status(400)
-          .json({
-            error: 'zod validation failure',
-            issues: (error as z.ZodError).issues,
-          });
+        res.status(400).json({
+          error: 'zod validation failure',
+          issues: (error as z.ZodError).issues,
+        });
         return;
       }
       const result = await tool.fn(parsedInput);
