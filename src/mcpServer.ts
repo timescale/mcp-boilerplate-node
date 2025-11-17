@@ -21,8 +21,11 @@ import {
   ListResourcesResult,
   ReadResourceResult,
   ServerCapabilities,
+  ServerNotification,
+  ServerRequest,
 } from '@modelcontextprotocol/sdk/types.js';
 import { log } from './logger.js';
+import { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.mcpServer` : 'mcpServer');
@@ -128,7 +131,10 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
             title: tool.config.title,
           },
         },
-        async (args: { [x: string]: any }, extra) => {
+        async (
+          args: { [x: string]: any },
+          extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
+        ) => {
           let traceContext = otelContext.active();
           if (extra?._meta?.traceparent) {
             // Some MCP clients (e.g. pydantic) pass the parent trace context

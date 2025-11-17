@@ -5,15 +5,38 @@ This provides some common code for creating a [Model Context Protocol](https://m
 ## Setup
 
 1. Clone the repository:
+
    ```bash
    git clone <repository-url>
    cd mcp-boilerplate-node
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
+
+## Eslint Plugin
+
+This project includes a custom ESLint plugin to guard against the problematic use of optional parameters for tool inputs. Doing so leads to tools that are incompatible with certain models, such as GPT-5.
+
+Add to your `eslint.config.mjs`:
+
+```js
+import boilerplatePlugin from '@tigerdata/mcp-boilerplate/eslintPlugin';
+export default [
+  // ... your existing config
+  {
+    plugins: {
+      'mcp-boilerplate': boilerplatePlugin,
+    },
+    rules: {
+      'mcp-boilerplate/no-optional-tool-params': 'error',
+    },
+  },
+];
+```
 
 ## Development
 
