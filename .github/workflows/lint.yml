@@ -2,7 +2,7 @@ name: Lint
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
 
 jobs:
@@ -10,14 +10,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v5
-      with:
-        node-version: 22
-        cache: 'npm'
-    - name: Install dependencies
-      run: npm ci
-    - name: Run ESLint
-      run: npm run lint
-    - name: Run build
-      run: npm run build --if-present
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run ESLint
+        run: npm run lint
+      - name: Run Prettier Check
+        run: npm run prettier:check
+      - name: Run build
+        run: npm run build --if-present
