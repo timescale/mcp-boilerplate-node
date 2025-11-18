@@ -13,3 +13,4 @@ export { StatusError } from './StatusError.js';
 export type { AdditionalSetupArgs } from './mcpServer.js';
 export { withSpan, addAiResultToSpan } from './tracing.js';
 export { registerExitHandlers } from './registerExitHandlers.js';
+export type { InferSchema } from './types.js';

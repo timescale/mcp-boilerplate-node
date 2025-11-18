@@ -122,3 +122,7 @@ export interface McpFeatureFlags {
   disabledTools?: Set<string> | null;
   query?: ParsedQs;
 }
+
+export type InferSchema<T extends Record<string, z.ZodType>> = {
+  [K in keyof T]: z.infer<T[K]>;
+};
