@@ -123,6 +123,23 @@ export interface McpFeatureFlags {
   query?: ParsedQs;
 }
 
-export type InferSchema<T extends Record<string, z.ZodType>> = {
-  [K in keyof T]: z.infer<T[K]>;
-};
+// Helper type to flatten intersection types
+type Flatten<T> = { [K in keyof T]: T[K] } & {};
+
+// Helper type to extract keys where the Zod type is optional
+type OptionalKeys<T extends Record<string, z.ZodType>> = {
+  [K in keyof T]: T[K] extends z.ZodOptional<z.ZodType> ? K : never;
+}[keyof T];
+
+// Helper type to extract keys where the Zod type is required
+type RequiredKeys<T extends Record<string, z.ZodType>> = {
+  [K in keyof T]: T[K] extends z.ZodOptional<z.ZodType> ? never : K;
+}[keyof T];
+
+export type InferSchema<T extends Record<string, z.ZodType>> = Flatten<
+  {
+    [K in RequiredKeys<T>]: z.infer<T[K]>;
+  } & {
+    [K in OptionalKeys<T>]?: z.infer<T[K]>;
+  }
+>;

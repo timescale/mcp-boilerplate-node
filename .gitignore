@@ -1,4 +1,5 @@
-dist
-node_modules
+.claude/*.local.*
 .env
 .idea
+dist
+node_modules
