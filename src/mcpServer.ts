@@ -75,6 +75,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
   additionalSetup,
   additionalCapabilities = {},
   featureFlags = {},
+  instructions,
 }: {
   name: string;
   version?: string;
@@ -85,6 +86,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   additionalCapabilities?: ServerCapabilities;
   featureFlags?: McpFeatureFlags;
+  instructions?: string;
 }): { server: McpServer } => {
   const enablePrompts = featureFlags.prompts !== false;
   const enableResources = featureFlags.resources !== false;
@@ -103,6 +105,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
           : null),
         ...additionalCapabilities,
       },
+      instructions,
     },
   );
 
