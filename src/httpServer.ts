@@ -20,6 +20,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   additionalSetup,
   cleanupFn,
   stateful = true,
+  instructions,
 }: {
   name: string;
   version?: string;
@@ -30,6 +31,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
   stateful?: boolean;
+  instructions?: string;
 }): {
   app: express.Express;
   server: Server;
@@ -59,6 +61,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
         resourceFactories,
         additionalSetup,
         featureFlags,
+        instructions,
       }),
     { name, stateful },
   );

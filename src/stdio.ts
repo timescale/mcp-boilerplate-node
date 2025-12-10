@@ -15,6 +15,7 @@ export const stdioServerFactory = async <
   resourceFactories,
   additionalSetup,
   cleanupFn,
+  instructions,
 }: {
   name: string;
   version?: string;
@@ -24,6 +25,7 @@ export const stdioServerFactory = async <
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => Promise<void>;
+  instructions?: string;
 }): Promise<void> => {
   try {
     console.error('Starting default (STDIO) server...');
@@ -36,6 +38,7 @@ export const stdioServerFactory = async <
       promptFactories,
       resourceFactories,
       additionalSetup,
+      instructions,
     });
 
     await server.connect(transport);
