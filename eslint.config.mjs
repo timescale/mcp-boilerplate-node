@@ -2,11 +2,7 @@
 
 import eslint from '@eslint/js';
 import { defineConfig } from 'eslint/config';
-import { dirname } from 'path';
 import tseslint from 'typescript-eslint';
-import { fileURLToPath } from 'url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(
   eslint.configs.recommended,
@@ -16,7 +12,7 @@ export default defineConfig(
     languageOptions: {
       parserOptions: {
         project: './tsconfig.json',
-        tsconfigRootDir: __dirname,
+        tsconfigRootDir: import.meta.dir,
       },
     },
     rules: {
