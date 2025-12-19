@@ -2,6 +2,7 @@
  * TypeScript ESLint plugin for custom rules specific to this project
  */
 
+import type { TSESTree } from '@typescript-eslint/typescript-estree';
 import type { Rule } from 'eslint';
 import type * as ESTree from 'estree';
 
@@ -39,16 +40,22 @@ const noOptionalInputSchema: Rule.RuleModule = {
     return {
       // Detect ApiFactory type annotations and extract the Input type parameter
       VariableDeclarator(node: ESTree.Node): void {
-        const varNode = node as any;
+        const varNode = node as ESTree.VariableDeclarator;
 
         // Check if this variable has a TypeScript type annotation
-        if (varNode.id?.typeAnnotation?.typeAnnotation) {
-          const typeAnn = varNode.id.typeAnnotation.typeAnnotation;
+        if (
+          varNode.id &&
+          (varNode.id as TSESTree.Identifier).typeAnnotation?.typeAnnotation
+        ) {
+          const typeAnn = (varNode.id as TSESTree.Identifier).typeAnnotation
+            ?.typeAnnotation;
 
           // Look for ApiFactory type reference
           if (
-            typeAnn.type === 'TSTypeReference' &&
-            typeAnn.typeName?.name === 'ApiFactory'
+            typeAnn?.type === 'TSTypeReference' &&
+            typeAnn.typeName &&
+            'name' in typeAnn.typeName &&
+            typeAnn.typeName.name === 'ApiFactory'
           ) {
             // Get the type parameters
             const typeParams = typeAnn.typeArguments?.params;
@@ -115,7 +122,7 @@ function isInsideApiFactoryInputSchema(
   context: Rule.RuleContext,
   apiFactoryInputSchemas: Set<string>,
 ): boolean {
-  const sourceCode = context.sourceCode ?? (context as any).getSourceCode?.();
+  const sourceCode = context.sourceCode ?? context.getSourceCode?.();
   const ancestors = sourceCode?.getAncestors?.(node) ?? [];
 
   // Check ancestors for variables that are ApiFactory input schemas
@@ -133,7 +140,8 @@ function isInsideApiFactoryInputSchema(
   }
 
   // Fallback: walk up parent chain if node.parent is available
-  let current = (node as any).parent as ESTree.Node | undefined;
+  type NodeWithParent = ESTree.Node & { parent?: ESTree.Node };
+  let current = (node as NodeWithParent).parent;
   while (current) {
     // Variable that's an ApiFactory input schema
     if (current.type === 'VariableDeclarator') {
@@ -146,7 +154,7 @@ function isInsideApiFactoryInputSchema(
       }
     }
 
-    current = (current as any).parent;
+    current = (current as NodeWithParent).parent;
   }
 
   return false;

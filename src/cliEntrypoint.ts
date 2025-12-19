@@ -1,4 +1,4 @@
-import { join } from 'path';
+import { join } from 'node:path';
 
 export async function cliEntrypoint(
   stdioEntrypoint: string,
@@ -17,7 +17,7 @@ export async function cliEntrypoint(
         break;
       }
       case 'http': {
-        let cleanup;
+        let cleanup: (() => Promise<void>) | undefined;
         if (
           args.includes('--instrument') ||
           process.env.INSTRUMENT === 'true'

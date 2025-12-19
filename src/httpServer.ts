@@ -1,14 +1,18 @@
 #!/usr/bin/env node
-import express, { NextFunction, Request, Response } from 'express';
-
-import { mcpRouterFactory } from './http/mcp.js';
+import type { Server } from 'node:http';
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
+import type { ZodRawShape } from 'zod';
 import { apiRouterFactory } from './http/api.js';
-import { registerExitHandlers } from './registerExitHandlers.js';
-import { ApiFactory, PromptFactory, ResourceFactory } from './types.js';
-import { AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
+import { mcpRouterFactory } from './http/mcp.js';
 import { log } from './logger.js';
+import { type AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
+import { registerExitHandlers } from './registerExitHandlers.js';
 import { StatusError } from './StatusError.js';
-import { Server } from 'node:http';
+import type { ApiFactory, PromptFactory, ResourceFactory } from './types.js';
 
 export const httpServerFactory = <Context extends Record<string, unknown>>({
   name,
@@ -25,8 +29,8 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   name: string;
   version?: string;
   context: Context;
-  apiFactories?: readonly ApiFactory<Context, any, any>[];
-  promptFactories?: readonly PromptFactory<Context, any>[];
+  apiFactories?: readonly ApiFactory<Context, ZodRawShape, ZodRawShape>[];
+  promptFactories?: readonly PromptFactory<Context, ZodRawShape>[];
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
@@ -73,12 +77,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   app.use('/api', apiRouter);
 
   // Error handler
-  app.use(function (
-    err: Error,
-    req: Request,
-    res: Response,
-    _next: NextFunction,
-  ) {
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     if (err instanceof StatusError && err.status < 500) {
       log.info('HTTP error response', {
         message: err.message,

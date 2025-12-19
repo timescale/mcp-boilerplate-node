@@ -1,17 +1,16 @@
-import { z } from 'zod';
-import type { ZodRawShape, ZodTypeAny } from 'zod';
 import type {
-  ToolAnnotations,
-  GetPromptResult,
-} from '@modelcontextprotocol/sdk/types.js';
-import { Router } from 'express';
-import {
   CompleteResourceTemplateCallback,
   ListResourcesCallback,
   ReadResourceCallback,
   ReadResourceTemplateCallback,
   ResourceMetadata,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type {
+  GetPromptResult,
+  ToolAnnotations,
+} from '@modelcontextprotocol/sdk/types.js';
+import type { Router } from 'express';
+import type { ZodRawShape, ZodTypeAny, z } from 'zod';
 
 export type ToolConfig<
   InputArgs extends ZodRawShape,

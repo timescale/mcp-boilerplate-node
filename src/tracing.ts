@@ -1,5 +1,10 @@
-import { SpanStatusCode, type Span, type Tracer } from '@opentelemetry/api';
-import type { GenerateTextResult, ModelMessage, ToolResultPart } from 'ai';
+import { type Span, SpanStatusCode, type Tracer } from '@opentelemetry/api';
+import type {
+  GenerateTextResult,
+  ModelMessage,
+  ToolResultPart,
+  ToolSet,
+} from 'ai';
 import { log } from './logger.js';
 
 export const withSpan = async <T>(
@@ -24,7 +29,7 @@ export const withSpan = async <T>(
   });
 };
 
-const getToolContent = (content: ToolResultPart): any => {
+const getToolContent = (content: ToolResultPart): unknown => {
   const { type, value } = content.output;
   if (type === 'json' && value) {
     if (typeof value === 'object' && 'structuredContent' in value) {
@@ -42,8 +47,8 @@ const getToolContent = (content: ToolResultPart): any => {
 const annotateModelMessage = (
   m: ModelMessage,
   i: number,
-): Record<string, any> => {
-  const msg: Record<string, any> = {
+): Record<string, unknown> => {
+  const msg: Record<string, unknown> = {
     ...m,
     'event.name': `gen_ai.${m.role}.message`,
     'gen_ai.message.index': Math.max(0, i - 1),
@@ -59,7 +64,7 @@ const annotateModelMessage = (
 
 export const addAiResultToSpan = (
   span: Span,
-  aiResult: GenerateTextResult<any, unknown>,
+  aiResult: GenerateTextResult<ToolSet, unknown>,
   inputMessages: ModelMessage[],
 ): void => {
   span.setAttribute('final_result', aiResult.text);

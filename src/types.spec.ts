@@ -1,4 +1,4 @@
-import { describe, it, expect, expectTypeOf } from 'bun:test';
+import { describe, expect, expectTypeOf, it } from 'bun:test';
 import { z } from 'zod';
 import type { InferSchema } from './types.js';
 
