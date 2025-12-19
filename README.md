@@ -14,7 +14,7 @@ This provides some common code for creating a [Model Context Protocol](https://m
 2. Install dependencies:
 
    ```bash
-   npm install
+   ./bun install
    ```
 
 ## Eslint Plugin
@@ -45,7 +45,7 @@ export default [
 To build the TypeScript project:
 
 ```bash
-npm run build
+./bun run build
 ```
 
 This compiles the TypeScript files from `src/` to JavaScript in `dist/`.
@@ -55,7 +55,7 @@ This compiles the TypeScript files from `src/` to JavaScript in `dist/`.
 To run TypeScript compilation in watch mode (rebuilds on file changes):
 
 ```bash
-npm run watch
+./bun run watch
 ```
 
 ### Linting
@@ -65,13 +65,13 @@ This project uses ESLint for code linting with TypeScript support.
 To run the linter:
 
 ```bash
-npm run lint
+./bun run lint
 ```
 
 To automatically fix linting issues where possible:
 
 ```bash
-npm run lint:fix
+./bun run lint --write
 ```
 
 ### Continuous Integration

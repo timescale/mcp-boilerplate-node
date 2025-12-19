@@ -15,23 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-
-      # Ensure npm 11.5.1 or later is installed, without this then the workflow may fail with:
-      #   npm error code ENEEDAUTH
-      #   npm error need auth This command requires you to be logged in to https://registry.npmjs.org/
-      - name: Update npm
-        run: npm install -g npm@latest
-
-      - run: npm ci
-
-      - run: npm run build --if-present
-
-      - run: npm publish
+      - name: Install dependencies
+        run: ./bun ci
+      - name: Publish to npm
+        run: ./bun publish
   notify-publish:
     name: Notify Publish to Slack
     runs-on: ubuntu-latest
