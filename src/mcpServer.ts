@@ -1,6 +1,7 @@
 import {
   McpServer,
   ResourceTemplate,
+  type ToolCallback,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type {
@@ -19,12 +20,11 @@ import {
   SpanStatusCode,
   trace,
 } from '@opentelemetry/api';
-import type { ZodRawShape } from 'zod';
 import { log } from './logger.js';
 import type {
-  ApiFactory,
+  BaseApiFactory,
+  BasePromptFactory,
   McpFeatureFlags,
-  PromptFactory,
   ResourceFactory,
 } from './types.js';
 
@@ -81,8 +81,8 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
   name: string;
   version?: string;
   context: Context;
-  apiFactories?: readonly ApiFactory<Context, ZodRawShape, ZodRawShape>[];
-  promptFactories?: readonly PromptFactory<Context, ZodRawShape>[];
+  apiFactories?: readonly BaseApiFactory<Context>[];
+  promptFactories?: readonly BasePromptFactory<Context>[];
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   additionalCapabilities?: ServerCapabilities;
@@ -135,10 +135,10 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
             title: tool.config.title,
           },
         },
-        async (
-          args: { [x: string]: unknown },
+        (async (
+          args: Record<string, unknown>,
           extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
-        ) => {
+        ): Promise<CallToolResult> => {
           let traceContext = otelContext.active();
           if (extra?._meta?.traceparent) {
             // Some MCP clients (e.g. pydantic) pass the parent trace context
@@ -188,7 +188,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
               }
             },
           );
-        },
+        }) as ToolCallback<typeof tool.config.inputSchema>,
       );
     }
   }
@@ -211,7 +211,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
           async (span): Promise<GetPromptResult> => {
             span.setAttribute('mcp.prompt.args', JSON.stringify(args));
             try {
-              const result = await prompt.fn(args);
+              const result = await prompt.fn(args as Record<string, unknown>);
               span.setStatus({ code: SpanStatusCode.OK });
               return result;
             } catch (error) {

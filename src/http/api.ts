@@ -4,12 +4,12 @@
 
 import bodyParser from 'body-parser';
 import { Router } from 'express';
-import { type ZodRawShape, z } from 'zod';
-import type { ApiFactory, RouterFactoryResult } from '../types.js';
+import { z } from 'zod';
+import type { BaseApiFactory, RouterFactoryResult } from '../types.js';
 
 export const apiRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
-  apiFactories: readonly ApiFactory<Context, ZodRawShape, ZodRawShape>[],
+  apiFactories: readonly BaseApiFactory<Context>[],
 ): RouterFactoryResult => {
   const router = Router();
 

@@ -12,6 +12,53 @@ import type {
 import type { Router } from 'express';
 import type { ZodRawShape, ZodTypeAny, z } from 'zod';
 
+// ===== Base types (type-erased for heterogeneous collections) =====
+
+export type BaseToolConfig = {
+  title?: string;
+  description?: string;
+  inputSchema: ZodRawShape;
+  outputSchema: ZodRawShape;
+  annotations?: ToolAnnotations;
+};
+
+export interface BaseApiDefinition {
+  name: string;
+  method?: 'get' | 'post' | 'put' | 'delete';
+  route?: string | string[];
+  config: BaseToolConfig;
+  disabled?: boolean;
+  // Method syntax is bivariant, allowing typed extensions to override with narrower types
+  fn(args: Record<string, unknown>): Promise<Record<string, unknown>>;
+  pickResult?(result: Record<string, unknown>): unknown;
+}
+
+export type BaseApiFactory<Context extends Record<string, unknown>> = (
+  ctx: Context,
+  featureFlags: McpFeatureFlags,
+) => BaseApiDefinition;
+
+export type BasePromptConfig = {
+  title?: string;
+  description?: string;
+  inputSchema: ZodRawShape;
+};
+
+export interface BasePromptDefinition {
+  name: string;
+  config: BasePromptConfig;
+  disabled?: boolean;
+  // Method syntax is bivariant, allowing typed extensions to override with narrower types
+  fn(args: Record<string, unknown>): Promise<GetPromptResult>;
+}
+
+export type BasePromptFactory<Context extends Record<string, unknown>> = (
+  ctx: Context,
+  featureFlags: McpFeatureFlags,
+) => BasePromptDefinition;
+
+// ===== Typed versions (for implementations) =====
+
 export type ToolConfig<
   InputArgs extends ZodRawShape,
   OutputArgs extends ZodRawShape,
@@ -27,19 +74,14 @@ export interface ApiDefinition<
   InputArgs extends ZodRawShape,
   OutputArgs extends ZodRawShape,
   SimplifiedOutputArgs = OutputArgs,
-> {
-  name: string;
-  method?: 'get' | 'post' | 'put' | 'delete';
-  route?: string | string[];
+> extends BaseApiDefinition {
   config: ToolConfig<InputArgs, OutputArgs>;
-  disabled?: boolean;
-  fn: (
+  fn(
     args: z.objectOutputType<InputArgs, ZodTypeAny>,
-  ) => Promise<z.objectOutputType<OutputArgs, ZodTypeAny>>;
-  // workaround for the fact that OutputArgs can't be an array
-  pickResult?: (
+  ): Promise<z.objectOutputType<OutputArgs, ZodTypeAny>>;
+  pickResult?(
     result: z.objectOutputType<OutputArgs, ZodTypeAny>,
-  ) => SimplifiedOutputArgs;
+  ): SimplifiedOutputArgs;
 }
 
 export type ApiFactory<
@@ -60,13 +102,10 @@ export type PromptConfig<InputArgs extends ZodRawShape> = {
   inputSchema: InputArgs;
 };
 
-export interface PromptDefinition<InputArgs extends ZodRawShape> {
-  name: string;
+export interface PromptDefinition<InputArgs extends ZodRawShape>
+  extends BasePromptDefinition {
   config: PromptConfig<InputArgs>;
-  disabled?: boolean;
-  fn: (
-    args: z.objectOutputType<InputArgs, ZodTypeAny>,
-  ) => Promise<GetPromptResult>;
+  fn(args: z.objectOutputType<InputArgs, ZodTypeAny>): Promise<GetPromptResult>;
 }
 
 export type PromptFactory<

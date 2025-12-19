@@ -6,14 +6,17 @@ import express, {
   type Request,
   type Response,
 } from 'express';
-import type { ZodRawShape } from 'zod';
 import { apiRouterFactory } from './http/api.js';
 import { mcpRouterFactory } from './http/mcp.js';
 import { log } from './logger.js';
 import { type AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
 import { registerExitHandlers } from './registerExitHandlers.js';
 import { StatusError } from './StatusError.js';
-import type { ApiFactory, PromptFactory, ResourceFactory } from './types.js';
+import type {
+  BaseApiFactory,
+  BasePromptFactory,
+  ResourceFactory,
+} from './types.js';
 
 export const httpServerFactory = <Context extends Record<string, unknown>>({
   name,
@@ -30,8 +33,8 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   name: string;
   version?: string;
   context: Context;
-  apiFactories?: readonly ApiFactory<Context, ZodRawShape, ZodRawShape>[];
-  promptFactories?: readonly PromptFactory<Context, ZodRawShape>[];
+  apiFactories?: readonly BaseApiFactory<Context>[];
+  promptFactories?: readonly BasePromptFactory<Context>[];
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;

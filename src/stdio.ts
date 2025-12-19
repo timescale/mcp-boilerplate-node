@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { ZodRawShape } from 'zod';
 import { type AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
 import { registerExitHandlers } from './registerExitHandlers.js';
-import type { ApiFactory, PromptFactory, ResourceFactory } from './types.js';
+import type {
+  BaseApiFactory,
+  BasePromptFactory,
+  ResourceFactory,
+} from './types.js';
 
 export const stdioServerFactory = async <
   Context extends Record<string, unknown>,
@@ -21,8 +24,8 @@ export const stdioServerFactory = async <
   name: string;
   version?: string;
   context: Context;
-  apiFactories?: readonly ApiFactory<Context, ZodRawShape, ZodRawShape>[];
-  promptFactories?: readonly PromptFactory<Context, ZodRawShape>[];
+  apiFactories?: readonly BaseApiFactory<Context>[];
+  promptFactories?: readonly BasePromptFactory<Context>[];
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => Promise<void>;
