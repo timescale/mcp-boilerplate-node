@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: ./bun ci
       - name: Publish to npm
-        run: ./bun publish
+        run: ./bun x npm publish
   notify-publish:
     name: Notify Publish to Slack
     runs-on: ubuntu-latest
