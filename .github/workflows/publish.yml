@@ -18,7 +18,8 @@ jobs:
       - name: Install dependencies
         run: ./bun ci
       - name: Publish to npm
-        run: ./bun x npm publish
+        # npm 11.5.1 or newer is required for OIDC authentication
+        run: ./bun x "npm@>=11.5.1" publish
   notify-publish:
     name: Notify Publish to Slack
     runs-on: ubuntu-latest
