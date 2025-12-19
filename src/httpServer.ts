@@ -106,7 +106,10 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
     import('@mcp-use/inspector')
       .then(({ mountInspector }) => {
         app.use(bodyParser.json());
-        mountInspector(app, { autoConnectUrl: `http://localhost:${PORT}/mcp` });
+        mountInspector(app, {
+          autoConnectUrl:
+            process.env.MCP_PUBLIC_URL ?? `http://localhost:${PORT}/mcp`,
+        });
       })
       .catch(log.error);
   }

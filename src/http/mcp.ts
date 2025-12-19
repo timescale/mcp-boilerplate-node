@@ -270,7 +270,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     inspector
       ? `
   <h3>Inspector</h3>
-  <p>You can use the <a href="/inspector">MCP Inspector</a> for testing purposes.</p>`
+  <p>You can use the <a href="/inspector?server=${encodeURIComponent(fullUrl)}">MCP Inspector</a> for testing purposes.</p>`
       : ''
   }
   <h3>Claude Code</h3>
