@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import type { Server } from 'node:http';
+import bodyParser from 'body-parser';
 import express, {
   type NextFunction,
   type Request,
@@ -53,6 +54,12 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   const app = express();
   app.enable('trust proxy');
 
+  const PORT = process.env.PORT || 3001;
+
+  const inspector =
+    process.env.NODE_ENV !== 'production' ||
+    ['1', 'true'].includes(process.env.ENABLE_INSPECTOR ?? '0');
+
   const [mcpRouter, mcpCleanup] = mcpRouterFactory(
     context,
     (context, featureFlags) =>
@@ -67,7 +74,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
         featureFlags,
         instructions,
       }),
-    { name, stateful },
+    { name, stateful, inspector },
   );
   cleanupFns.push(mcpCleanup);
   app.use('/mcp', mcpRouter);
@@ -91,14 +98,28 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
       .json({ error: err.message });
   });
 
+  if (inspector) {
+    process.env.MCP_USE_ANONYMIZED_TELEMETRY = 'false';
+    import('@mcp-use/inspector')
+      .then(({ mountInspector }) => {
+        app.use(bodyParser.json());
+        mountInspector(app, { autoConnectUrl: `http://localhost:${PORT}/mcp` });
+      })
+      .catch(log.error);
+  }
+
   // Start the server
-  const PORT = process.env.PORT || 3001;
-  const server = app.listen(PORT, (error?: Error) => {
+  const server = app.listen(PORT, async (error?: Error) => {
     if (error) {
       log.error('Error starting HTTP server:', error);
       exitHandler(1);
     } else {
       log.info(`HTTP Server listening on port ${PORT}`);
+      if (inspector) {
+        log.info(
+          `🌐 MCP inspector running at http://localhost:${PORT}/inspector`,
+        );
+      }
     }
   });
   cleanupFns.push(async () => {

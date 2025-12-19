@@ -31,9 +31,11 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   {
     name,
     stateful = true,
+    inspector = false,
   }: {
     name?: string;
     stateful?: boolean;
+    inspector?: boolean;
   } = {},
 ): RouterFactoryResult => {
   const router = Router();
@@ -264,7 +266,13 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   <h1>${name}</h1>
   <h2>Model Context Protocol (MCP) Server</h2>
   <p>This endpoint is used for MCP communication. Please use an MCP-compatible client to interact with this server.</p>
-
+  ${
+    inspector
+      ? `
+  <h3>Inspector</h3>
+  <p>You can use the <a href="/inspector">MCP Inspector</a> for testing purposes.</p>`
+      : ''
+  }
   <h3>Claude Code</h3>
   <p>To connect to this MCP server using Claude Code, run the following command in your terminal:</p>
   <pre><code>claude mcp add --transport http ${name || req.get('host')} ${fullUrl}</code></pre>
