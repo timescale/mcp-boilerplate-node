@@ -1,19 +1,23 @@
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { randomUUID } from 'node:crypto';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import {
-  trace,
   context as otelContext,
   propagation,
   SpanKind,
   SpanStatusCode,
+  trace,
 } from '@opentelemetry/api';
 import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventions';
-import { Request, Response, Router } from 'express';
-import { randomUUID } from 'node:crypto';
+import { type Request, type Response, Router } from 'express';
 import getRawBody from 'raw-body';
-import { RouterFactoryResult, McpFeatureFlags, ParsedQs } from '../types.js';
 import { log } from '../logger.js';
+import type {
+  McpFeatureFlags,
+  ParsedQs,
+  RouterFactoryResult,
+} from '../types.js';
 
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.router.mcp` : 'router.mcp');
@@ -93,7 +97,8 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     let body = req.body;
 
     if (sessionId) {
-      if (!transports.has(sessionId)) {
+      const t = transports.get(sessionId);
+      if (!t) {
         res.status(404).json({
           jsonrpc: '2.0',
           error: {
@@ -104,7 +109,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
         });
         return;
       }
-      transport = transports.get(sessionId)!;
+      transport = t;
     } else {
       if (!body) {
         body = await getRawBody(req, {
@@ -237,7 +242,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
       return;
     }
 
-    await transports.get(sessionId)!.handleRequest(req, res);
+    await transports.get(sessionId)?.handleRequest(req, res);
   };
 
   // Handle GET requests for server-to-client notifications via SSE
@@ -278,7 +283,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     for (const sessionId in transports) {
       try {
         log.info(`Closing transport for session ${sessionId}`);
-        await transports.get(sessionId)!.close();
+        await transports.get(sessionId)?.close();
         transports.delete(sessionId);
       } catch (error) {
         log.error(

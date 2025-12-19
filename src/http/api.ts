@@ -2,14 +2,14 @@
  * REST API alternative to MCP for direct use of the same tools.
  */
 
-import { Router } from 'express';
 import bodyParser from 'body-parser';
-import { z } from 'zod';
-import { ApiFactory, RouterFactoryResult } from '../types.js';
+import { Router } from 'express';
+import { type ZodRawShape, z } from 'zod';
+import type { ApiFactory, RouterFactoryResult } from '../types.js';
 
 export const apiRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
-  apiFactories: readonly ApiFactory<Context, any, any>[],
+  apiFactories: readonly ApiFactory<Context, ZodRawShape, ZodRawShape>[],
 ): RouterFactoryResult => {
   const router = Router();
 

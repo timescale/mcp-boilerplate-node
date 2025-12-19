@@ -1,4 +1,8 @@
-import { LogAttributes, logs, SeverityNumber } from '@opentelemetry/api-logs';
+import {
+  type LogAttributes,
+  logs,
+  SeverityNumber,
+} from '@opentelemetry/api-logs';
 
 const name = process.env.OTEL_SERVICE_NAME || 'mcp-app';
 const logger = logs.getLogger(name);

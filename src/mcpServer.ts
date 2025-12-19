@@ -2,20 +2,8 @@ import {
   McpServer,
   ResourceTemplate,
 } from '@modelcontextprotocol/sdk/server/mcp.js';
-import {
-  ApiFactory,
-  PromptFactory,
-  McpFeatureFlags,
-  ResourceFactory,
-} from './types.js';
-import {
-  SpanStatusCode,
-  trace,
-  context as otelContext,
-  propagation,
-  SpanKind,
-} from '@opentelemetry/api';
-import {
+import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type {
   CallToolResult,
   GetPromptResult,
   ListResourcesResult,
@@ -24,8 +12,21 @@ import {
   ServerNotification,
   ServerRequest,
 } from '@modelcontextprotocol/sdk/types.js';
+import {
+  context as otelContext,
+  propagation,
+  SpanKind,
+  SpanStatusCode,
+  trace,
+} from '@opentelemetry/api';
+import type { ZodRawShape } from 'zod';
 import { log } from './logger.js';
-import { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
+import type {
+  ApiFactory,
+  McpFeatureFlags,
+  PromptFactory,
+  ResourceFactory,
+} from './types.js';
 
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.mcpServer` : 'mcpServer');
@@ -52,7 +53,7 @@ const shouldSkip = (
     }
   }
   for (const disabledSet of disabledSets) {
-    if (disabledSet && disabledSet.has(item.name)) {
+    if (disabledSet?.has(item.name)) {
       return true;
     }
   }
@@ -80,8 +81,8 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
   name: string;
   version?: string;
   context: Context;
-  apiFactories?: readonly ApiFactory<Context, any, any>[];
-  promptFactories?: readonly PromptFactory<Context, any>[];
+  apiFactories?: readonly ApiFactory<Context, ZodRawShape, ZodRawShape>[];
+  promptFactories?: readonly PromptFactory<Context, ZodRawShape>[];
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   additionalCapabilities?: ServerCapabilities;
@@ -135,7 +136,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
           },
         },
         async (
-          args: { [x: string]: any },
+          args: { [x: string]: unknown },
           extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
         ) => {
           let traceContext = otelContext.active();
@@ -153,7 +154,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
             async (span): Promise<CallToolResult> => {
               span.setAttribute('mcp.tool.args', JSON.stringify(args));
               try {
-                const result = await tool.fn(args as any);
+                const result = await tool.fn(args);
                 const text = JSON.stringify(result);
                 span.setAttribute('mcp.tool.responseBytes', text.length);
                 span.setStatus({ code: SpanStatusCode.OK });
@@ -204,13 +205,13 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
       ) {
         continue;
       }
-      server.registerPrompt(prompt.name, prompt.config as any, async (args) =>
+      server.registerPrompt(prompt.name, prompt.config, async (args) =>
         tracer.startActiveSpan(
           `mcp.prompt.${prompt.name}`,
           async (span): Promise<GetPromptResult> => {
             span.setAttribute('mcp.prompt.args', JSON.stringify(args));
             try {
-              const result = await prompt.fn(args as any);
+              const result = await prompt.fn(args);
               span.setStatus({ code: SpanStatusCode.OK });
               return result;
             } catch (error) {
@@ -288,7 +289,10 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
                     `mcp.resource.templated.${resource.name}.list`,
                     async (span): Promise<ListResourcesResult> => {
                       try {
-                        const result = await resource.list!(extra);
+                        if (!resource.list) {
+                          throw new Error('resource.list is not defined');
+                        }
+                        const result = await resource.list(extra);
                         span.setAttribute(
                           'mcp.resource.list.uris',
                           result.resources.map((r) => r.uri).join(', '),
