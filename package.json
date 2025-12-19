@@ -31,7 +31,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "prepare": "npm run build",
+    "prepare": "tsc",
     "watch": "tsc --watch",
     "lint": "./bun x @biomejs/biome check"
   },
