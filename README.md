@@ -2,20 +2,17 @@
 
 This provides some common code for creating a [Model Context Protocol](https://modelcontextprotocol.io/introduction) (MCP) server in Node.js.
 
-## Setup
+## Usage
 
-1. Clone the repository:
+```bash
+npm install @tigerdata/mcp-boilerplate
+```
 
-   ```bash
-   git clone <repository-url>
-   cd mcp-boilerplate-node
-   ```
+See [tiger-skills-mcp-server](https://github.com/tigerdata/tiger-skills-mcp-server) for an example MCP server using this boilerplate.
 
-2. Install dependencies:
+### Skills
 
-   ```bash
-   ./bun install
-   ```
+Add skills support to your MCP server by leveraging the skills submodule in `@tigerdata/mcp-boilerplate/skills`. See [src/skills/README.md](./skills/README.md) for details.
 
 ## Eslint Plugin
 
