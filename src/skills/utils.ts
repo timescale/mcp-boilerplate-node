@@ -380,10 +380,19 @@ const getSkillContent = async (
   skill: Skill,
   targetPath: string,
 ): Promise<string> => {
+  if (targetPath.includes('..')) {
+    throw new Error(`Invalid path: ${targetPath}`);
+  }
   switch (skill.type) {
     case 'local': {
-      const target = Path.join(skill.path, targetPath);
-      const s = await stat(target);
+      const root = Path.resolve(skill.path);
+      const target = Path.join(root, targetPath);
+      if (targetPath !== '.' && !target.startsWith(root)) {
+        throw new Error(`Invalid path: ${targetPath}`);
+      }
+      const s = await stat(target).catch(() => {
+        throw new Error(`Path not found: ${targetPath}`);
+      });
       if (s.isDirectory()) {
         const entries = await readdir(target, {
           withFileTypes: true,
@@ -404,13 +413,13 @@ const getSkillContent = async (
       if (!owner || !repo) {
         throw new Error(`Invalid GitHub repo format in skill: ${skill.repo}`);
       }
-      const target = `${skill.path || '.'}/${targetPath}`
+      const path = `${skill.path || '.'}/${targetPath}`
         .replace(/\/+/g, '/')
         .replace(/(^\.?\/+)|(^\.$)|(\/\.$)/g, '');
       const response = await octokit.repos.getContent({
         owner,
         repo,
-        path: target,
+        path,
       });
       if (Array.isArray(response.data)) {
         // Directory listing
