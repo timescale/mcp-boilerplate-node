@@ -18,7 +18,9 @@ import type {
   ResourceFactory,
 } from './types.js';
 
-export const httpServerFactory = <Context extends Record<string, unknown>>({
+export const httpServerFactory = async <
+  Context extends Record<string, unknown>,
+>({
   name,
   version,
   context,
@@ -40,13 +42,13 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   cleanupFn?: () => void | Promise<void>;
   stateful?: boolean;
   instructions?: string;
-}): {
+}): Promise<{
   app: express.Express;
   server: Server;
   apiRouter: express.Router;
   mcpRouter: express.Router;
   registerCleanupFn: (fn: () => Promise<void>) => void;
-} => {
+}> => {
   const cleanupFns: (() => void | Promise<void>)[] = cleanupFn
     ? [cleanupFn]
     : [];
@@ -82,7 +84,7 @@ export const httpServerFactory = <Context extends Record<string, unknown>>({
   cleanupFns.push(mcpCleanup);
   app.use('/mcp', mcpRouter);
 
-  const [apiRouter, apiCleanup] = apiRouterFactory(context, apiFactories);
+  const [apiRouter, apiCleanup] = await apiRouterFactory(context, apiFactories);
   cleanupFns.push(apiCleanup);
   app.use('/api', apiRouter);
 

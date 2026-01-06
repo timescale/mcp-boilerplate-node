@@ -13,10 +13,11 @@ import {
 } from './utils.js';
 
 interface Options {
-  name?: string;
-  method?: 'get' | 'post';
-  route?: string;
+  appendSkillsListToDescription?: boolean;
   description?: string;
+  method?: 'get' | 'post';
+  name?: string;
+  route?: string;
   title?: string;
 }
 
@@ -28,13 +29,17 @@ export const createViewSkillToolFactory =
     typeof zViewSkillInputSchema,
     typeof zViewSkillOutputSchema
   > =>
-  ({ octokit }, { query }) => ({
+  async ({ octokit }, { query }) => ({
     name: options.name || 'view',
     method: options.method || 'get',
     route: options.route || '/view',
     config: {
       title: options.title || 'View Skill',
-      description: options.description || skillsDescription,
+      description: `${options.description || skillsDescription}${
+        options.appendSkillsListToDescription
+          ? `\n\n## Available Skills\n\n${await listSkills(octokit, parseSkillsFlags(query))}`
+          : ''
+      }`,
       inputSchema: zViewSkillInputSchema,
       outputSchema: zViewSkillOutputSchema,
     },

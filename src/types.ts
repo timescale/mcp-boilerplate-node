@@ -36,7 +36,7 @@ export interface BaseApiDefinition {
 export type BaseApiFactory<Context extends Record<string, unknown>> = (
   ctx: Context,
   featureFlags: McpFeatureFlags,
-) => BaseApiDefinition;
+) => BaseApiDefinition | Promise<BaseApiDefinition>;
 
 export type BasePromptConfig = {
   title?: string;
@@ -55,7 +55,7 @@ export interface BasePromptDefinition {
 export type BasePromptFactory<Context extends Record<string, unknown>> = (
   ctx: Context,
   featureFlags: McpFeatureFlags,
-) => BasePromptDefinition;
+) => BasePromptDefinition | Promise<BasePromptDefinition>;
 
 // ===== Typed versions (for implementations) =====
 
@@ -92,7 +92,9 @@ export type ApiFactory<
 > = (
   ctx: Context,
   featureFlags: McpFeatureFlags,
-) => ApiDefinition<Input, Output, RestOutput>;
+) =>
+  | ApiDefinition<Input, Output, RestOutput>
+  | Promise<ApiDefinition<Input, Output, RestOutput>>;
 
 export type RouterFactoryResult = [Router, () => void | Promise<void>];
 
@@ -142,7 +144,7 @@ export type ResourceDefinition =
 export type ResourceFactory<Context extends Record<string, unknown>> = (
   ctx: Context,
   featureFlags: McpFeatureFlags,
-) => ResourceDefinition;
+) => ResourceDefinition | Promise<ResourceDefinition>;
 
 export interface ParsedQs {
   [key: string]: undefined | string | ParsedQs | (string | ParsedQs)[];

@@ -66,7 +66,9 @@ export interface AdditionalSetupArgs<Context extends Record<string, unknown>> {
   featureFlags: McpFeatureFlags;
 }
 
-export const mcpServerFactory = <Context extends Record<string, unknown>>({
+export const mcpServerFactory = async <
+  Context extends Record<string, unknown>,
+>({
   name,
   version = '1.0.0',
   context,
@@ -88,7 +90,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
   additionalCapabilities?: ServerCapabilities;
   featureFlags?: McpFeatureFlags;
   instructions?: string;
-}): { server: McpServer } => {
+}): Promise<{ server: McpServer }> => {
   const enablePrompts = featureFlags.prompts !== false;
   const enableResources = featureFlags.resources !== false;
   const enableTools = featureFlags.tools !== false;
@@ -112,7 +114,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
 
   if (enableTools) {
     for (const factory of apiFactories) {
-      const tool = factory(context, featureFlags);
+      const tool = await factory(context, featureFlags);
       if (
         shouldSkip(
           tool,
@@ -195,7 +197,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
 
   if (enablePrompts) {
     for (const factory of promptFactories) {
-      const prompt = factory(context, featureFlags);
+      const prompt = await factory(context, featureFlags);
       if (
         shouldSkip(
           prompt,
@@ -233,7 +235,7 @@ export const mcpServerFactory = <Context extends Record<string, unknown>>({
 
   if (enableResources) {
     for (const factory of resourceFactories) {
-      const resource = factory(context, featureFlags);
+      const resource = await factory(context, featureFlags);
       if (
         shouldSkip(
           resource,
