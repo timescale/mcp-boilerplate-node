@@ -433,7 +433,7 @@ const getSkillContent = async (
 };
 
 export const skillsDescription = `
-# Tiger Skills
+# Skills
 
 This tool provides access to domain-specific skills - structured knowledge and procedures for specialized tasks.
 
