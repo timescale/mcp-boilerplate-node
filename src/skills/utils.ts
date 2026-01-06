@@ -83,7 +83,8 @@ export const loadSkills = async (
       lastFetchSkillMap = Date.now();
       return result;
     },
-    () => {
+    (err) => {
+      log.error('Failed to load skills, returning empty skill map', err);
       skillMap = null;
       return new Map<string, Skill>();
     },
