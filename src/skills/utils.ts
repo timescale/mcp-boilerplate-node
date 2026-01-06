@@ -380,13 +380,24 @@ const getSkillContent = async (
   skill: Skill,
   targetPath: string,
 ): Promise<string> => {
-  if (targetPath.includes('..')) {
+  const normalizedPath = Path.posix
+    .normalize(
+      // treat \ as /
+      targetPath.replace(/\\/g, '/'),
+    )
+    // strip leading ./ or /
+    .replace(/^\/+/, '')
+    .replace(/^(\.\/)+/, '');
+  if (
+    normalizedPath.split('/').some((s) => s === '..') ||
+    normalizedPath.includes('\0')
+  ) {
     throw new Error(`Invalid path: ${targetPath}`);
   }
   switch (skill.type) {
     case 'local': {
       const root = Path.resolve(skill.path);
-      const target = Path.join(root, targetPath);
+      const target = Path.resolve(Path.join(root, normalizedPath));
       if (targetPath !== '.' && !target.startsWith(root)) {
         throw new Error(`Invalid path: ${targetPath}`);
       }
@@ -397,11 +408,12 @@ const getSkillContent = async (
         const entries = await readdir(target, {
           withFileTypes: true,
         });
-        return entries
+        const listing = entries
           .map((entry) => {
             return `${entry.isDirectory() ? '📁' : '📄'} ${entry.name}`;
           })
           .join('\n');
+        return `Directory listing for ${skill.name}/${normalizedPath}:\n${listing}`;
       } else if (s.isFile()) {
         return await readFile(target, 'utf-8');
       } else {
@@ -413,7 +425,7 @@ const getSkillContent = async (
       if (!owner || !repo) {
         throw new Error(`Invalid GitHub repo format in skill: ${skill.repo}`);
       }
-      const path = `${skill.path || '.'}/${targetPath}`
+      const path = `${skill.path || '.'}/${normalizedPath}`
         .replace(/\/+/g, '/')
         .replace(/(^\.?\/+)|(^\.$)|(\/\.$)/g, '');
       const response = await octokit.repos.getContent({
@@ -428,7 +440,7 @@ const getSkillContent = async (
             return `${entry.type === 'dir' ? '📁' : '📄'} ${entry.name}`;
           })
           .join('\n');
-        return `Directory listing for ${skill.name}/${targetPath}:\n${listing}`;
+        return `Directory listing for ${skill.name}/${normalizedPath}:\n${listing}`;
       }
       if (response.data.type !== 'file') {
         throw new Error(`Unsupported content type: ${response.data.type}`);
