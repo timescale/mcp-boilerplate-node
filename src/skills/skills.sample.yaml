@@ -1,0 +1,22 @@
+---
+# Copy this file to `./skills.yaml` and customize as needed.
+local-collection:
+  # A collection of local skills stored in the `./skills` directory.
+  # Each skill should be in its own subdirectory with a `SKILL.md` file.
+  type: local_collection
+  path: ./skills
+local-individual-skill:
+  # An individual local skill stored in the `./skills/skill-name` directory.
+  type: local
+  path: ./path-to/individual/skill-name
+claude-cookbooks:
+  # A GitHub repo containing a collection of skills.
+  # Each skill should be in its own subdirectory with a `SKILL.md` file.
+  type: github_collection
+  repo: anthropics/claude-cookbooks
+  path: ./skills/custom_skills
+skill-creator:
+  # A GitHub repo containing an individual skill.
+  type: github
+  repo: anthropics/skills
+  path: skill-creator/SKILL.md
