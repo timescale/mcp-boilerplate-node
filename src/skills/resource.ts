@@ -1,4 +1,4 @@
-import type { ResourceFactory } from '../types.js';
+import type { McpFeatureFlags, ResourceFactory } from '../types.js';
 import type { ServerContextWithOctokit } from './types.js';
 import {
   listSkills,
@@ -9,21 +9,32 @@ import {
   viewSkillContent,
 } from './utils.js';
 
-interface Options {
+interface Options<Context extends ServerContextWithOctokit> {
   appendSkillsListToDescription?: boolean;
   description?: string;
+  disabled?:
+    | boolean
+    | ((ctx: Context, flags: McpFeatureFlags) => boolean | Promise<boolean>);
   name?: string;
   title?: string;
   uriScheme?: string;
 }
 
 export const createSkillsResourceFactory =
-  (options: Options = {}): ResourceFactory<ServerContextWithOctokit> =>
-  async ({ octokit }, { query }) => {
+  <Context extends ServerContextWithOctokit>(
+    options: Options<Context> = {},
+  ): ResourceFactory<ServerContextWithOctokit> =>
+  async (ctx, mcpFlags) => {
+    const { octokit } = ctx;
+    const { query } = mcpFlags;
     const flags = parseSkillsFlags(query);
     return {
       type: 'templated',
       name: options.name || 'skills',
+      disabled:
+        typeof options.disabled === 'function'
+          ? await options.disabled(ctx as Context, mcpFlags)
+          : options.disabled,
       config: {
         title: options.title || 'Skills',
         description: `${options.description || skillsDescription}${
