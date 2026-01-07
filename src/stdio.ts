@@ -34,7 +34,7 @@ export const stdioServerFactory = async <
   try {
     console.error('Starting default (STDIO) server...');
     const transport = new StdioServerTransport();
-    const { server } = mcpServerFactory({
+    const { server } = await mcpServerFactory({
       name,
       version,
       context,

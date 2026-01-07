@@ -27,7 +27,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   createServer: (
     context: Context,
     featureFlags: McpFeatureFlags,
-  ) => { server: McpServer },
+  ) => Promise<{ server: McpServer }>,
   {
     name,
     stateful = true,
@@ -77,7 +77,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     res: Response,
   ): Promise<void> => {
     const featureFlags = parseFeatureFlags(req);
-    const { server } = createServer(context, featureFlags);
+    const { server } = await createServer(context, featureFlags);
     const transport: StreamableHTTPServerTransport =
       new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
@@ -152,7 +152,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
         },
       });
 
-      const { server } = createServer(context, featureFlags);
+      const { server } = await createServer(context, featureFlags);
       await server.connect(transport);
     }
 

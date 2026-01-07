@@ -7,16 +7,16 @@ import { Router } from 'express';
 import { z } from 'zod';
 import type { BaseApiFactory, RouterFactoryResult } from '../types.js';
 
-export const apiRouterFactory = <Context extends Record<string, unknown>>(
+export const apiRouterFactory = async <Context extends Record<string, unknown>>(
   context: Context,
   apiFactories: readonly BaseApiFactory<Context>[],
-): RouterFactoryResult => {
+): Promise<RouterFactoryResult> => {
   const router = Router();
 
   router.use(bodyParser.json());
 
   for (const factory of apiFactories) {
-    const tool = factory(context, {});
+    const tool = await factory(context, {});
     if (!tool.method || !tool.route) continue;
 
     router[tool.method](tool.route, async (req, res) => {
