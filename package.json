@@ -1,6 +1,6 @@
 {
   "name": "@tigerdata/mcp-boilerplate",
-  "version": "0.9.3",
+  "version": "1.0.0",
   "description": "MCP boilerplate code for Node.js",
   "license": "Apache-2.0",
   "author": "TigerData",
