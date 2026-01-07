@@ -39,7 +39,7 @@ export const createSkillsResourceFactory =
         title: options.title || 'Skills',
         description: `${options.description || skillsDescription}${
           options.appendSkillsListToDescription
-            ? `\n\n## Available Skills\n\n${await listSkills(octokit, parseSkillsFlags(query))}`
+            ? `\n\n## Available Skills\n\n${await listSkills({ octokit, flags: parseSkillsFlags(query) })}`
             : ''
         }`,
       },
@@ -53,7 +53,7 @@ export const createSkillsResourceFactory =
           mimeType: string;
         }>;
       }> => {
-        const skills = await loadSkills(octokit);
+        const skills = await loadSkills({ octokit });
         return {
           resources: Array.from(skills.values())
             .filter((s) => skillVisible(s.name, flags))
@@ -77,7 +77,7 @@ export const createSkillsResourceFactory =
           contents: [
             {
               uri: uri.href,
-              text: await viewSkillContent(octokit, flags, name, path),
+              text: await viewSkillContent({ octokit, flags, name, path }),
             },
           ],
         };

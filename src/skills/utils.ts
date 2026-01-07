@@ -72,10 +72,13 @@ const skillContentCache: Map<string, string> = new Map();
 
 let lastFetchSkillMap = 0;
 let skillMap: Promise<Map<string, Skill>> | null = null;
-export const loadSkills = async (
-  octokit: Octokit,
+export const loadSkills = async ({
+  octokit,
   force = false,
-): Promise<Map<string, Skill>> => {
+}: {
+  octokit?: Octokit | null;
+  force?: boolean;
+} = {}): Promise<Map<string, Skill>> => {
   if (skillMap && !force && Date.now() - lastFetchSkillMap < TTL)
     return skillMap;
   skillMap = doLoadSkills(octokit).then(
@@ -92,7 +95,9 @@ export const loadSkills = async (
   return skillMap;
 };
 
-const doLoadSkills = async (octokit: Octokit): Promise<Map<string, Skill>> => {
+const doLoadSkills = async (
+  octokit?: Octokit | null,
+): Promise<Map<string, Skill>> => {
   const skillCfgs = await getSkillConfig();
 
   skillContentCache.clear();
@@ -171,6 +176,12 @@ const doLoadSkills = async (octokit: Octokit): Promise<Map<string, Skill>> => {
   ): Promise<void> => {
     if (shouldIgnorePath(path, flags)) return;
     const skillPath = `${path}/SKILL.md`;
+    if (!octokit) {
+      log.error(
+        `Octokit instance is required to load GitHub skills: ${owner}/${repo}/${skillPath}`,
+      );
+      return;
+    }
     try {
       const skillFileResponse = await octokit.repos.getContent({
         owner,
@@ -262,6 +273,12 @@ const doLoadSkills = async (octokit: Octokit): Promise<Map<string, Skill>> => {
               );
               break;
             }
+            if (!octokit) {
+              log.error(
+                `Octokit instance is required to load GitHub collection skills: ${cfg.repo}`,
+              );
+              break;
+            }
             const rootPath = cfg.path
               ? cfg.path.replace(/(^\.?\/+)|(^\.$)|(\/\.$)/g, '')
               : '';
@@ -310,17 +327,22 @@ const doLoadSkills = async (octokit: Octokit): Promise<Map<string, Skill>> => {
   );
 };
 
-export const resolveSkill = async (
-  octokit: Octokit,
-  flags: SkillsFlags,
-  skillName: string,
+export const resolveSkill = async ({
+  name,
+  octokit,
+  flags = {},
   force = false,
-): Promise<Skill | null> => {
-  if (!skillVisible(skillName, flags)) {
+}: {
+  name: string;
+  octokit?: Octokit | null;
+  flags?: SkillsFlags;
+  force?: boolean;
+}): Promise<Skill | null> => {
+  if (!skillVisible(name, flags)) {
     return null;
   }
-  const skills = await loadSkills(octokit, force);
-  return skills.get(skillName) || null;
+  const skills = await loadSkills({ octokit, force });
+  return skills.get(name) || null;
 };
 
 export const skillVisible = (name: string, flags: SkillsFlags): boolean => {
@@ -333,12 +355,16 @@ export const skillVisible = (name: string, flags: SkillsFlags): boolean => {
   return true;
 };
 
-export const listSkills = async (
-  octokit: Octokit,
-  flags: SkillsFlags,
+export const listSkills = async ({
+  octokit,
+  flags = {},
   force = false,
-): Promise<string> => {
-  const skills = await loadSkills(octokit, force);
+}: {
+  octokit?: Octokit | null;
+  flags?: SkillsFlags;
+  force?: boolean;
+} = {}): Promise<string> => {
+  const skills = await loadSkills({ octokit, force });
   return `<available_skills>
 ${encode(
   [...skills.values()]
@@ -352,13 +378,18 @@ ${encode(
 </available_skills>`;
 };
 
-export const viewSkillContent = async (
-  octokit: Octokit,
-  flags: SkillsFlags,
-  name: string,
-  passedPath?: string,
-): Promise<string> => {
-  const skill = await resolveSkill(octokit, flags, name);
+export const viewSkillContent = async ({
+  octokit,
+  flags = {},
+  name,
+  path: passedPath,
+}: {
+  octokit?: Octokit | null;
+  flags?: SkillsFlags;
+  name: string;
+  path?: string;
+}): Promise<string> => {
+  const skill = await resolveSkill({ octokit, flags, name });
   if (!skill) {
     throw new Error(`Skill not found: ${name}`);
   }
@@ -370,16 +401,20 @@ export const viewSkillContent = async (
     return cached;
   }
 
-  const content = await getSkillContent(octokit, skill, targetPath);
+  const content = await getSkillContent({ octokit, skill, path: targetPath });
   skillContentCache.set(cacheKey, content);
   return content;
 };
 
-const getSkillContent = async (
-  octokit: Octokit,
-  skill: Skill,
-  targetPath: string,
-): Promise<string> => {
+const getSkillContent = async ({
+  skill,
+  path: targetPath,
+  octokit,
+}: {
+  skill: Skill;
+  path: string;
+  octokit?: Octokit | null;
+}): Promise<string> => {
   const normalizedPath = Path.posix
     .normalize(
       // treat \ as /
@@ -428,6 +463,11 @@ const getSkillContent = async (
       const path = `${skill.path || '.'}/${normalizedPath}`
         .replace(/\/+/g, '/')
         .replace(/(^\.?\/+)|(^\.$)|(\/\.$)/g, '');
+      if (!octokit) {
+        throw new Error(
+          `Octokit instance is required to load GitHub skill content: ${owner}/${repo}/${path}`,
+        );
+      }
       const response = await octokit.repos.getContent({
         owner,
         repo,

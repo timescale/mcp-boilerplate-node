@@ -82,12 +82,12 @@ export const zSkillMap = z.record(zSkill);
 export type SkillMap = z.infer<typeof zSkillMap>;
 
 export interface SkillsFlags {
-  enabledSkills: Set<string> | null;
-  disabledSkills: Set<string> | null;
+  enabledSkills?: Set<string> | null;
+  disabledSkills?: Set<string> | null;
 }
 
 export interface ServerContextWithOctokit extends Record<string, unknown> {
-  octokit: Octokit;
+  octokit?: Octokit | null;
 }
 
 export const zViewSkillInputSchema = {

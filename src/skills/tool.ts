@@ -32,41 +32,44 @@ export const createViewSkillToolFactory =
     typeof zViewSkillInputSchema,
     typeof zViewSkillOutputSchema
   > =>
-  async (ctx, mcpFlags) => ({
-    name: options.name || 'view',
-    disabled:
-      typeof options.disabled === 'function'
-        ? await options.disabled(ctx as Context, mcpFlags)
-        : options.disabled,
-    method: options.method || 'get',
-    route: options.route || '/view',
-    config: {
-      title: options.title || 'View Skill',
-      description: `${options.description || skillsDescription}${
-        options.appendSkillsListToDescription
-          ? `\n\n## Available Skills\n\n${await listSkills(ctx.octokit, parseSkillsFlags(mcpFlags.query))}`
-          : ''
-      }`,
-      inputSchema: zViewSkillInputSchema,
-      outputSchema: zViewSkillOutputSchema,
-    },
-    fn: async ({
-      skill_name,
-      path: passedPath,
-    }): Promise<ViewSkillOutputSchema> => {
-      const flags = parseSkillsFlags(mcpFlags.query);
-      if (!skill_name || skill_name === '.') {
+  async (ctx, mcpFlags) => {
+    const { octokit } = ctx;
+    const flags = parseSkillsFlags(mcpFlags.query);
+    return {
+      name: options.name || 'view',
+      disabled:
+        typeof options.disabled === 'function'
+          ? await options.disabled(ctx as Context, mcpFlags)
+          : options.disabled,
+      method: options.method || 'get',
+      route: options.route || '/view',
+      config: {
+        title: options.title || 'View Skill',
+        description: `${options.description || skillsDescription}${
+          options.appendSkillsListToDescription
+            ? `\n\n## Available Skills\n\n${await listSkills({ octokit, flags })}`
+            : ''
+        }`,
+        inputSchema: zViewSkillInputSchema,
+        outputSchema: zViewSkillOutputSchema,
+      },
+      fn: async ({
+        skill_name: name,
+        path,
+      }): Promise<ViewSkillOutputSchema> => {
+        if (!name || name === '.') {
+          return {
+            content: await listSkills({ octokit, flags }),
+          };
+        }
         return {
-          content: await listSkills(ctx.octokit, flags),
+          content: await viewSkillContent({
+            octokit,
+            flags,
+            name,
+            path,
+          }),
         };
-      }
-      return {
-        content: await viewSkillContent(
-          ctx.octokit,
-          flags,
-          skill_name,
-          passedPath,
-        ),
-      };
-    },
-  });
+      },
+    };
+  };
