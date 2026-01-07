@@ -395,7 +395,7 @@ export const viewSkillContent = async ({
   }
 
   const targetPath = passedPath || 'SKILL.md';
-  const cacheKey = `${name}/${targetPath}`;
+  const cacheKey = `${name}/${normalizeSkillPath(targetPath)}`;
   const cached = skillContentCache.get(cacheKey);
   if (cached) {
     return cached;
@@ -404,6 +404,23 @@ export const viewSkillContent = async ({
   const content = await getSkillContent({ octokit, skill, path: targetPath });
   skillContentCache.set(cacheKey, content);
   return content;
+};
+
+const normalizeSkillPath = (path: string): string => {
+  const normalizedPath = Path.posix
+    .normalize(
+      // treat \ as /
+      path.replace(/\\/g, '/'),
+    )
+    // strip leading ./ or /
+    .replace(/^(\.?\/)+/, '');
+  if (
+    normalizedPath.split('/').some((s) => s === '..') ||
+    normalizedPath.includes('\0')
+  ) {
+    throw new Error(`Invalid path: ${path}`);
+  }
+  return normalizedPath;
 };
 
 const getSkillContent = async ({
@@ -415,20 +432,7 @@ const getSkillContent = async ({
   path: string;
   octokit?: Octokit | null;
 }): Promise<string> => {
-  const normalizedPath = Path.posix
-    .normalize(
-      // treat \ as /
-      targetPath.replace(/\\/g, '/'),
-    )
-    // strip leading ./ or /
-    .replace(/^\/+/, '')
-    .replace(/^(\.\/)+/, '');
-  if (
-    normalizedPath.split('/').some((s) => s === '..') ||
-    normalizedPath.includes('\0')
-  ) {
-    throw new Error(`Invalid path: ${targetPath}`);
-  }
+  const normalizedPath = normalizeSkillPath(targetPath);
   switch (skill.type) {
     case 'local': {
       const root = Path.resolve(skill.path);
