@@ -12,7 +12,7 @@ See [tiger-skills-mcp-server](https://github.com/tigerdata/tiger-skills-mcp-serv
 
 ### Skills
 
-Add skills support to your MCP server by leveraging the skills submodule in `@tigerdata/mcp-boilerplate/skills`. See [src/skills/README.md](./skills/README.md) for details.
+Add skills support to your MCP server by leveraging the skills submodule in `@tigerdata/mcp-boilerplate/skills`. See the [Skills README](./src/skills/README.md) for details.
 
 ## Eslint Plugin
 
