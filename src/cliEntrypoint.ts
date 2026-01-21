@@ -1,9 +1,12 @@
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export async function cliEntrypoint(
   stdioEntrypoint: string,
   httpEntrypoint: string,
-  instrumentation = join(import.meta.dir, './instrumentation.js'),
+  instrumentation = join(__dirname, './instrumentation.js'),
 ): Promise<void> {
   // Parse command line arguments first
   const args = process.argv.slice(2);
