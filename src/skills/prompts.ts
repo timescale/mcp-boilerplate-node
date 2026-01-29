@@ -1,10 +1,21 @@
 import type { Octokit } from '@octokit/rest';
 import type { PromptFactory } from '../types.js';
 import type { ServerContextWithOctokit } from './types.js';
-import { loadSkills, parseSkillsFlags, viewSkillContent } from './utils.js';
+import {
+  loadSkills,
+  parseSkillsFlags,
+  setSkillsBasePath,
+  viewSkillContent,
+} from './utils.js';
 
 interface Options {
   octokit?: Octokit;
+  /**
+   * Base path for resolving relative skill paths.
+   * Use this to load skills from your package directory instead of CWD.
+   * Typically set to __dirname or the directory containing your skills.yaml.
+   */
+  basePath?: string;
 }
 
 interface PromptResult {
@@ -25,6 +36,9 @@ export const createSkillsPromptFactories = async (
 ): Promise<
   PromptFactory<ServerContextWithOctokit, Record<string, never>>[]
 > => {
+  if (options.basePath) {
+    setSkillsBasePath(options.basePath);
+  }
   const skills = await loadSkills(options);
   return Array.from(skills.entries()).map<
     PromptFactory<ServerContextWithOctokit, Record<string, never>>

@@ -26,16 +26,51 @@ const TTL = process.env.SKILLS_TTL
   ? parseInt(process.env.SKILLS_TTL, 10)
   : 5 * 60 * 1000;
 
+let configuredBasePath: string | null = null;
+
+/**
+ * Set the base path for resolving relative skill paths.
+ * Call this before loading skills to use paths relative to your package location
+ * instead of the current working directory.
+ */
+export const setSkillsBasePath = (basePath: string): void => {
+  configuredBasePath = basePath;
+};
+
+/**
+ * Get the configured base path, or process.cwd() if not set.
+ */
+export const getSkillsBasePath = (): string => {
+  return configuredBasePath || process.cwd();
+};
+
+/**
+ * Resolve a path relative to the configured base path.
+ */
+const resolveSkillConfigPath = (path: string): string => {
+  if (Path.isAbsolute(path)) return path;
+  return Path.resolve(getSkillsBasePath(), path);
+};
+
 let lastFetchCfg = 0;
 let skillCfgMap: SkillCfgMap | null = null;
+let lastBasePath: string | null = null;
 export const getSkillConfig = async (
   configFilePath = process.env.SKILLS_FILE || './skills.yaml',
 ): Promise<SkillCfgMap> => {
+  const currentBasePath = getSkillsBasePath();
+  // Invalidate cache if basePath changed
+  if (lastBasePath !== currentBasePath) {
+    skillCfgMap = null;
+    lastFetchCfg = 0;
+  }
   if (skillCfgMap && Date.now() - lastFetchCfg < TTL) return skillCfgMap;
 
-  const data = await readFile(configFilePath, 'utf-8');
+  const resolvedPath = resolveSkillConfigPath(configFilePath);
+  const data = await readFile(resolvedPath, 'utf-8');
   skillCfgMap = zSkillCfgMap.parse(YAML.parse(data));
   lastFetchCfg = Date.now();
+  lastBasePath = currentBasePath;
 
   return skillCfgMap;
 };
@@ -147,7 +182,8 @@ const doLoadSkills = async (
     flags?: CollectionFlags,
   ): Promise<void> => {
     if (shouldIgnorePath(path, flags)) return;
-    const skillPath = `${path}/SKILL.md`;
+    const resolvedPath = resolveSkillConfigPath(path);
+    const skillPath = `${resolvedPath}/SKILL.md`;
     try {
       const fileContent = await readFile(skillPath, 'utf-8');
       const {
@@ -155,10 +191,10 @@ const doLoadSkills = async (
         content,
       } = await parseSkillFile(fileContent);
       if (shouldIgnoreSkill(name, flags)) return;
-      if (alreadyExists(name, path, description)) return;
+      if (alreadyExists(name, resolvedPath, description)) return;
       skills.set(name, {
         type: 'local',
-        path,
+        path: resolvedPath,
         name,
         description,
       } satisfies LocalSkill);
@@ -234,7 +270,8 @@ const doLoadSkills = async (
             break;
           }
           case 'local_collection': {
-            const dirEntries = await readdir(cfg.path, {
+            const resolvedCollectionPath = resolveSkillConfigPath(cfg.path);
+            const dirEntries = await readdir(resolvedCollectionPath, {
               withFileTypes: true,
             });
             const flags = parseCollectionFlags(cfg);
@@ -242,11 +279,13 @@ const doLoadSkills = async (
               if (entry.isFile()) continue;
               if (!entry.isDirectory()) {
                 log.warn(`Skipping non-directory entry in local_collection`, {
-                  path: `${cfg.path}/${entry.name}`,
+                  path: `${resolvedCollectionPath}/${entry.name}`,
                 });
                 continue;
               }
-              promises.push(loadLocalPath(`${cfg.path}/${entry.name}`, flags));
+              promises.push(
+                loadLocalPath(`${resolvedCollectionPath}/${entry.name}`, flags),
+              );
             }
             break;
           }
