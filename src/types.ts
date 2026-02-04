@@ -80,12 +80,8 @@ export interface ApiDefinition<
   SimplifiedOutputArgs = OutputArgs,
 > extends BaseApiDefinition {
   config: ToolConfig<InputArgs, OutputArgs>;
-  fn(
-    args: ObjectOutput<InputArgs>,
-  ): Promise<ObjectOutput<OutputArgs>>;
-  pickResult?(
-    result: ObjectOutput<OutputArgs>,
-  ): SimplifiedOutputArgs;
+  fn(args: ObjectOutput<InputArgs>): Promise<ObjectOutput<OutputArgs>>;
+  pickResult?(result: ObjectOutput<OutputArgs>): SimplifiedOutputArgs;
 }
 
 export type ApiFactory<
