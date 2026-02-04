@@ -10,7 +10,11 @@ import type {
   ToolAnnotations,
 } from '@modelcontextprotocol/sdk/types.js';
 import type { Router } from 'express';
-import type { ZodRawShape, ZodTypeAny, z } from 'zod';
+import type { ZodRawShape, z } from 'zod';
+
+// Compatibility helper: works with both Zod 3 and Zod 4
+// Replaces z.objectOutputType which was removed in Zod 4
+type ObjectOutput<T extends ZodRawShape> = z.infer<z.ZodObject<T>>;
 
 // ===== Base types (type-erased for heterogeneous collections) =====
 
@@ -77,10 +81,10 @@ export interface ApiDefinition<
 > extends BaseApiDefinition {
   config: ToolConfig<InputArgs, OutputArgs>;
   fn(
-    args: z.objectOutputType<InputArgs, ZodTypeAny>,
-  ): Promise<z.objectOutputType<OutputArgs, ZodTypeAny>>;
+    args: ObjectOutput<InputArgs>,
+  ): Promise<ObjectOutput<OutputArgs>>;
   pickResult?(
-    result: z.objectOutputType<OutputArgs, ZodTypeAny>,
+    result: ObjectOutput<OutputArgs>,
   ): SimplifiedOutputArgs;
 }
 
@@ -107,7 +111,7 @@ export type PromptConfig<InputArgs extends ZodRawShape> = {
 export interface PromptDefinition<InputArgs extends ZodRawShape>
   extends BasePromptDefinition {
   config: PromptConfig<InputArgs>;
-  fn(args: z.objectOutputType<InputArgs, ZodTypeAny>): Promise<GetPromptResult>;
+  fn(args: ObjectOutput<InputArgs>): Promise<GetPromptResult>;
 }
 
 export type PromptFactory<

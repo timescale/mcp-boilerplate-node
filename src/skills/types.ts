@@ -60,7 +60,7 @@ export const zSkillCfg = z.discriminatedUnion('type', [
 ]);
 export type SkillCfg = z.infer<typeof zSkillCfg>;
 
-export const zSkillCfgMap = z.record(zSkillCfg);
+export const zSkillCfgMap = z.record(z.string(), zSkillCfg);
 export type SkillCfgMap = z.infer<typeof zSkillCfgMap>;
 
 export const zSkillMatter = z.object({
@@ -78,7 +78,7 @@ export type GitHubSkill = z.infer<typeof zGitHubSkill>;
 export const zSkill = z.discriminatedUnion('type', [zLocalSkill, zGitHubSkill]);
 export type Skill = z.infer<typeof zSkill>;
 
-export const zSkillMap = z.record(zSkill);
+export const zSkillMap = z.record(z.string(), zSkill);
 export type SkillMap = z.infer<typeof zSkillMap>;
 
 export interface SkillsFlags {
