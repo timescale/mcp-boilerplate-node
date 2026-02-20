@@ -23,7 +23,7 @@ export async function cliEntrypoint(
         let cleanup: (() => Promise<void>) | undefined;
         if (
           args.includes('--instrument') ||
-          process.env.INSTRUMENT === 'true'
+          process.env.INSTRUMENT?.toLowerCase().trim() === 'true'
         ) {
           const { instrument } = await import(instrumentation);
           ({ cleanup } = instrument());
