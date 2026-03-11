@@ -72,17 +72,20 @@ export const httpServerFactory = async <
   mcpPath = '/mcp',
   apiPath = '/api',
 }: HttpServerOptions<Context>): Promise<HttpServerResult> => {
-
   const cleanupFns: (() => void | Promise<void>)[] = cleanupFn
     ? [cleanupFn]
     : [];
   const exitHandler = registerExitHandlers(cleanupFns);
 
-  const ownApp = externalApp ? undefined : express();
-  if (ownApp) {
+  let app: Router;
+  let ownApp: express.Express | undefined;
+  if (externalApp) {
+    app = externalApp;
+  } else {
+    ownApp = express();
     ownApp.enable('trust proxy');
+    app = ownApp;
   }
-  const app = externalApp ?? ownApp!;
 
   const PORT = process.env.PORT || 3001;
 
@@ -155,8 +158,9 @@ export const httpServerFactory = async <
     };
   }
 
-  // Start the server
-  const server = ownApp!.listen(PORT, async (error?: Error) => {
+  // Start the server (ownApp is guaranteed to exist here — we returned early for external apps)
+  if (!ownApp) throw new Error('Expected own Express app');
+  const server = ownApp.listen(PORT, async (error?: Error) => {
     if (error) {
       log.error('Error starting HTTP server:', error);
       exitHandler(1);
