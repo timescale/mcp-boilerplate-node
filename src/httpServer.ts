@@ -18,20 +18,7 @@ import type {
   ResourceFactory,
 } from './types.js';
 
-export const httpServerFactory = async <
-  Context extends Record<string, unknown>,
->({
-  name,
-  version,
-  context,
-  apiFactories = [],
-  promptFactories,
-  resourceFactories,
-  additionalSetup,
-  cleanupFn,
-  stateful = true,
-  instructions,
-}: {
+interface HttpServerOptions<Context extends Record<string, unknown>> {
   name: string;
   version?: string;
   context: Context;
@@ -42,22 +29,61 @@ export const httpServerFactory = async <
   cleanupFn?: () => void | Promise<void>;
   stateful?: boolean;
   instructions?: string;
-}): Promise<{
+  /**
+   * When provided, mount routers on this Express app instead of creating a new
+   * one. The caller owns the server lifecycle — `httpServerFactory` will not
+   * call `app.listen()`. The returned `server` will be `null`.
+   */
+  app?: express.Express;
+  /**
+   * Path to mount the MCP router at. Defaults to `"/mcp"`.
+   */
+  mcpPath?: string;
+  /**
+   * Path to mount the API router at. Defaults to `"/api"`.
+   */
+  apiPath?: string;
+}
+
+interface HttpServerResult {
   app: express.Express;
-  server: Server;
+  /** `null` when an external `app` was provided (caller owns the server). */
+  server: Server | null;
   apiRouter: express.Router;
   mcpRouter: express.Router;
   registerCleanupFn: (fn: () => Promise<void>) => void;
-}> => {
+}
+
+export const httpServerFactory = async <
+  Context extends Record<string, unknown>,
+>(
+  opts: HttpServerOptions<Context>,
+): Promise<HttpServerResult> => {
+  const {
+    name,
+    version,
+    context,
+    apiFactories = [],
+    promptFactories,
+    resourceFactories,
+    additionalSetup,
+    cleanupFn,
+    stateful = true,
+    instructions,
+    app: externalApp,
+    mcpPath = '/mcp',
+    apiPath = '/api',
+  } = opts;
+
   const cleanupFns: (() => void | Promise<void>)[] = cleanupFn
     ? [cleanupFn]
     : [];
   const exitHandler = registerExitHandlers(cleanupFns);
 
-  log.info('Starting HTTP server...');
-
-  const app = express();
-  app.enable('trust proxy');
+  const app = externalApp ?? express();
+  if (!externalApp) {
+    app.enable('trust proxy');
+  }
 
   const PORT = process.env.PORT || 3001;
 
@@ -82,11 +108,11 @@ export const httpServerFactory = async <
     { name, stateful, inspector },
   );
   cleanupFns.push(mcpCleanup);
-  app.use('/mcp', mcpRouter);
+  app.use(mcpPath, mcpRouter);
 
   const [apiRouter, apiCleanup] = await apiRouterFactory(context, apiFactories);
   cleanupFns.push(apiCleanup);
-  app.use('/api', apiRouter);
+  app.use(apiPath, apiRouter);
 
   // Error handler
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
@@ -102,6 +128,19 @@ export const httpServerFactory = async <
       .status(err instanceof StatusError ? err.status : 500)
       .json({ error: err.message });
   });
+
+  // When an external app is provided, the caller owns the server lifecycle.
+  if (externalApp) {
+    return {
+      app,
+      server: null,
+      apiRouter,
+      mcpRouter,
+      registerCleanupFn: (fn: () => Promise<void>): void => {
+        cleanupFns.push(fn);
+      },
+    };
+  }
 
   if (inspector) {
     process.env.MCP_USE_ANONYMIZED_TELEMETRY = 'false';
