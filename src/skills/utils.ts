@@ -371,18 +371,6 @@ const getAvailableSkillNames = async ({
   return names.length > 0 ? names.join(', ') : '(none)';
 };
 
-/** Standard recovery text appended to any skills API error response. */
-const skillsApiRecoverySuffix = async ({
-  octokit,
-  flags = {},
-}: {
-  octokit?: Octokit | null;
-  flags?: SkillsFlags;
-}): Promise<string> => {
-  const available = await getAvailableSkillNames({ octokit, flags });
-  return `Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`;
-};
-
 export const listSkills = async ({
   octokit,
   flags = {},
@@ -419,6 +407,7 @@ export const viewSkillContent = async ({
 }): Promise<string> => {
   const skill = await resolveSkill({ octokit, flags, name });
   if (!skill) {
+    log.warn('Skills API recovery', { reason: 'skill_not_found', name });
     const available = await getAvailableSkillNames({ octokit, flags });
     return `Skill not found: ${name}. Available skills: ${available}. Use one of these names.`;
   }
@@ -435,7 +424,9 @@ export const viewSkillContent = async ({
     return content;
   } catch (err) {
     const message = (err as Error).message;
-    const recovery = await skillsApiRecoverySuffix({ octokit, flags });
+    log.warn('Skills API recovery', { reason: 'error', message });
+    const available = await getAvailableSkillNames({ octokit, flags });
+    const recovery = `Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`;
     return `${message}. ${recovery}`;
   }
 };
@@ -478,6 +469,11 @@ const getSkillContent = async ({
       try {
         stats = await stat(target);
       } catch {
+        log.warn('Skills API recovery', {
+          reason: 'path_not_found',
+          skill: skill.name,
+          path: targetPath,
+        });
         const entries = await readdir(root, { withFileTypes: true }).catch(
           () => [],
         );
@@ -515,11 +511,30 @@ const getSkillContent = async ({
           `Octokit instance is required to load GitHub skill content: ${owner}/${repo}/${path}`,
         );
       }
-      const response = await octokit.repos.getContent({
-        owner,
-        repo,
-        path,
-      });
+      const repoPath = `Repo: ${owner}/${repo}, path: ${path}.`;
+      let response: Awaited<
+        ReturnType<Octokit['repos']['getContent']>
+      >;
+      try {
+        response = await octokit.repos.getContent({
+          owner,
+          repo,
+          path,
+        });
+      } catch (err: unknown) {
+        const status = (err as { status?: number }).status;
+        const detail =
+          typeof status === 'number'
+            ? status === 404
+              ? '404 (not found)'
+              : status === 403
+                ? '403 (forbidden or rate limit)'
+                : status >= 500
+                  ? `${status} (GitHub server error)`
+                  : `HTTP ${status}`
+            : (err as Error).message;
+        throw new Error(`GitHub API request failed: ${detail}. ${repoPath}`);
+      }
       if (Array.isArray(response.data)) {
         // Directory listing
         const listing = response.data
@@ -548,8 +563,8 @@ This tool provides access to domain-specific skills - structured knowledge and p
 
 ## How to Use Skills
 
-1. **Discover**: If you have not been provided the list of skills, fetch them by invoking this tool with \`name: "."\`
-2. **Read**: Access a skill by reading its SKILL.md file: \`name: "skill-name", path: "SKILL.md"\`
+1. **Discover**: If you have not been provided the list of skills, fetch them by invoking this tool with \`name: "."\`. Use only skill names that appear in that list.
+2. **Read**: Access a skill by reading its SKILL.md file: \`name: "skill-name", path: "SKILL.md"\`. Use a skill name from the list (step 1); do not guess names from context or topic words.
 3. **Explore**: To find other files, first list the skill contents with \`path: "."\`, then use only a path that appears in that listing. Do not guess or infer path names from skill descriptions or topic names (e.g. "indexing strategies" in text is not a path).
 4. **Apply**: Follow the procedures and reference the knowledge in the skill to complete your task
 
