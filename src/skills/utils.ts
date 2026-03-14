@@ -440,10 +440,19 @@ const getSkillContent = async ({
       if (targetPath !== '.' && !target.startsWith(root)) {
         throw new Error(`Invalid path: ${targetPath}`);
       }
-      const s = await stat(target).catch(() => {
-        throw new Error(`Path not found: ${targetPath}`);
-      });
-      if (s.isDirectory()) {
+      let stats: Awaited<ReturnType<typeof stat>>;
+      try {
+        stats = await stat(target);
+      } catch {
+        const entries = await readdir(root, { withFileTypes: true }).catch(
+          () => [],
+        );
+        const listing = entries
+          .map((entry) => `${entry.isDirectory() ? '📁' : '📄'} ${entry.name}`)
+          .join('\n');
+        return `Path not found: ${targetPath}. Available in skill "${skill.name}":\n${listing || '(empty)'}\n\nUse path "SKILL.md" to read the main skill document.`;
+      }
+      if (stats.isDirectory()) {
         const entries = await readdir(target, {
           withFileTypes: true,
         });
@@ -453,7 +462,7 @@ const getSkillContent = async ({
           })
           .join('\n');
         return `Directory listing for ${skill.name}/${normalizedPath}:\n${listing}`;
-      } else if (s.isFile()) {
+      } else if (stats.isFile()) {
         return await readFile(target, 'utf-8');
       } else {
         throw new Error(`Unsupported file type at path: ${target}`);
@@ -507,9 +516,7 @@ This tool provides access to domain-specific skills - structured knowledge and p
 
 1. **Discover**: If you have not been provided the list of skills, fetch them by invoking this tool with \`name: "."\`
 2. **Read**: Access a skill by reading its SKILL.md file: \`name: "skill-name", path: "SKILL.md"\`
-3. **Explore**: Navigate within the skill directory to find additional resources, examples, or templates.
-   The SKILL.md file and other documents may contain relative links to guide you.
-   You can list the content of directories by specifying the directory path, relative to the skill root.
+3. **Explore**: To find other files, first list the skill contents with \`path: "."\`, then use only a path that appears in that listing. Do not guess or infer path names from skill descriptions or topic names (e.g. "indexing strategies" in text is not a path).
 4. **Apply**: Follow the procedures and reference the knowledge in the skill to complete your task
 
 ## Skill Structure
