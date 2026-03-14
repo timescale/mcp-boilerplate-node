@@ -450,7 +450,7 @@ const getSkillContent = async ({
         const listing = entries
           .map((entry) => `${entry.isDirectory() ? '📁' : '📄'} ${entry.name}`)
           .join('\n');
-        return `Path not found: ${targetPath}. Available in skill "${skill.name}":\n${listing || '(empty)'}\n\nUse path "SKILL.md" to read the main skill document.`;
+        return `Path not found: ${targetPath}. Contents of skill "${skill.name}":\n${listing || '(empty)'}\n\nUse path "SKILL.md" to read the main skill document.`;
       }
       if (stats.isDirectory()) {
         const entries = await readdir(target, {
