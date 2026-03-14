@@ -355,6 +355,34 @@ export const skillVisible = (name: string, flags: SkillsFlags): boolean => {
   return true;
 };
 
+/** Comma-separated visible skill names for error/recovery messages. */
+const getAvailableSkillNames = async ({
+  octokit,
+  flags = {},
+}: {
+  octokit?: Octokit | null;
+  flags?: SkillsFlags;
+}): Promise<string> => {
+  const skills = await loadSkills({ octokit, force: false });
+  const names = [...skills.values()]
+    .filter((s) => skillVisible(s.name, flags))
+    .map((s) => s.name)
+    .sort();
+  return names.length > 0 ? names.join(', ') : '(none)';
+};
+
+/** Standard recovery text appended to any skills API error response. */
+const skillsApiRecoverySuffix = async ({
+  octokit,
+  flags = {},
+}: {
+  octokit?: Octokit | null;
+  flags?: SkillsFlags;
+}): Promise<string> => {
+  const available = await getAvailableSkillNames({ octokit, flags });
+  return `Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`;
+};
+
 export const listSkills = async ({
   octokit,
   flags = {},
@@ -391,19 +419,25 @@ export const viewSkillContent = async ({
 }): Promise<string> => {
   const skill = await resolveSkill({ octokit, flags, name });
   if (!skill) {
-    throw new Error(`Skill not found: ${name}`);
+    const available = await getAvailableSkillNames({ octokit, flags });
+    return `Skill not found: ${name}. Available skills: ${available}. Use one of these names.`;
   }
 
   const targetPath = passedPath || 'SKILL.md';
-  const cacheKey = `${name}/${normalizeSkillPath(targetPath)}`;
-  const cached = skillContentCache.get(cacheKey);
-  if (cached) {
-    return cached;
+  try {
+    const cacheKey = `${name}/${normalizeSkillPath(targetPath)}`;
+    const cached = skillContentCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    const content = await getSkillContent({ octokit, skill, path: targetPath });
+    skillContentCache.set(cacheKey, content);
+    return content;
+  } catch (err) {
+    const message = (err as Error).message;
+    const recovery = await skillsApiRecoverySuffix({ octokit, flags });
+    return `${message}. ${recovery}`;
   }
-
-  const content = await getSkillContent({ octokit, skill, path: targetPath });
-  skillContentCache.set(cacheKey, content);
-  return content;
 };
 
 const normalizeSkillPath = (path: string): string => {
