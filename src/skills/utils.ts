@@ -512,9 +512,7 @@ const getSkillContent = async ({
         );
       }
       const repoPath = `Repo: ${owner}/${repo}, path: ${path}.`;
-      let response: Awaited<
-        ReturnType<Octokit['repos']['getContent']>
-      >;
+      let response: Awaited<ReturnType<Octokit['repos']['getContent']>>;
       try {
         response = await octokit.repos.getContent({
           owner,
