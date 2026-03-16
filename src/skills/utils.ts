@@ -563,7 +563,7 @@ This tool provides access to domain-specific skills - structured knowledge and p
 
 1. **Discover**: If you have not been provided the list of skills, fetch them by invoking this tool with \`name: "."\`. Use only skill names that appear in that list.
 2. **Read**: Access a skill by reading its SKILL.md file: \`name: "skill-name", path: "SKILL.md"\`. Use a skill name from the list (step 1); do not guess names from context or topic words.
-3. **Explore**: To find other files, first list the skill contents with \`path: "."\`, then use only a path that appears in that listing. Do not guess or infer path names from skill descriptions or topic names (e.g. "indexing strategies" in text is not a path).
+3. **Explore**: To find other files in the skill's directory (e.g. \`examples.md\`, \`best_practices.md\`), first list the files in that directory with \`path: "."\` for the chosen skill, then use only a path that appears in that file listing. Do not guess or infer path names from skill descriptions or topic names (e.g. "indexing strategies" in text is not a path).
 4. **Apply**: Follow the procedures and reference the knowledge in the skill to complete your task
 
 ## Skill Structure
