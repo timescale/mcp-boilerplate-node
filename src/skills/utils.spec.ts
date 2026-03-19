@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import Path from 'node:path';
 import {
@@ -96,7 +96,9 @@ second-skill:
             disabledSkills: null,
           },
         }),
-      ).rejects.toThrow('getAvailableSkillNames failed: enabledSkills filter threw');
+      ).rejects.toThrow(
+        'getAvailableSkillNames failed: enabledSkills filter threw',
+      );
     });
   });
 
@@ -146,7 +148,9 @@ second-skill:
       expect(result).toContain('Path not found: indexing-strategies.');
       expect(result).toContain('Contents of skill "first-skill"');
       expect(result).toContain('SKILL.md');
-      expect(result).toContain('Use path "SKILL.md" to read the main skill document.');
+      expect(result).toContain(
+        'Use path "SKILL.md" to read the main skill document.',
+      );
     });
 
     it('invalid path directory traversal: returns a recovery string containing Invalid path and available skills when path attempts traversal', async () => {

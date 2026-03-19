@@ -371,9 +371,7 @@ export const getAvailableSkillNames = async ({
       .sort();
     return names.length > 0 ? names.join(', ') : '(none)';
   } catch (err) {
-    throw new Error(
-      `getAvailableSkillNames failed: ${(err as Error).message}`,
-    );
+    throw new Error(`getAvailableSkillNames failed: ${(err as Error).message}`);
   }
 };
 
