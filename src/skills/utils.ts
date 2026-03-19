@@ -356,19 +356,25 @@ export const skillVisible = (name: string, flags: SkillsFlags): boolean => {
 };
 
 /** Comma-separated visible skill names for error/recovery messages. */
-const getAvailableSkillNames = async ({
+export const getAvailableSkillNames = async ({
   octokit,
   flags = {},
 }: {
   octokit?: Octokit | null;
   flags?: SkillsFlags;
 }): Promise<string> => {
-  const skills = await loadSkills({ octokit, force: false });
-  const names = [...skills.values()]
-    .filter((s) => skillVisible(s.name, flags))
-    .map((s) => s.name)
-    .sort();
-  return names.length > 0 ? names.join(', ') : '(none)';
+  try {
+    const skills = await loadSkills({ octokit, force: false });
+    const names = [...skills.values()]
+      .filter((s) => skillVisible(s.name, flags))
+      .map((s) => s.name)
+      .sort();
+    return names.length > 0 ? names.join(', ') : '(none)';
+  } catch (err) {
+    throw new Error(
+      `getAvailableSkillNames failed: ${(err as Error).message}`,
+    );
+  }
 };
 
 export const listSkills = async ({
