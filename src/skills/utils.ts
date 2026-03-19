@@ -511,28 +511,11 @@ const getSkillContent = async ({
           `Octokit instance is required to load GitHub skill content: ${owner}/${repo}/${path}`,
         );
       }
-      const repoPath = `Repo: ${owner}/${repo}, path: ${path}.`;
-      let response: Awaited<ReturnType<Octokit['repos']['getContent']>>;
-      try {
-        response = await octokit.repos.getContent({
-          owner,
-          repo,
-          path,
-        });
-      } catch (err: unknown) {
-        const status = (err as { status?: number }).status;
-        const detail =
-          typeof status === 'number'
-            ? status === 404
-              ? '404 (not found)'
-              : status === 403
-                ? '403 (forbidden or rate limit)'
-                : status >= 500
-                  ? `${status} (GitHub server error)`
-                  : `HTTP ${status}`
-            : (err as Error).message;
-        throw new Error(`GitHub API request failed: ${detail}. ${repoPath}`);
-      }
+      const response = await octokit.repos.getContent({
+        owner,
+        repo,
+        path,
+      });
       if (Array.isArray(response.data)) {
         // Directory listing
         const listing = response.data
