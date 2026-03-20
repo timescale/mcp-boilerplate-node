@@ -1,3 +1,4 @@
+import { log } from '../logger.js';
 import type { ApiFactory, McpFeatureFlags } from '../types.js';
 import {
   type ServerContextWithOctokit,
@@ -80,18 +81,32 @@ export const createViewSkillToolFactory =
           if (!(err instanceof SkillsApiError)) {
             throw err;
           }
-          const available = await getAvailableSkillNames({ octokit, flags });
           if (err instanceof SkillNotFoundError) {
+            log.warn(`Skill not found: ${err.skillName}`, {
+              error: err.constructor.name,
+              skill: err.skillName,
+            });
+            const available = await getAvailableSkillNames({ octokit, flags });
             return {
               content: `Skill not found: ${err.skillName}. Available skills: ${available}. Use one of these names.`,
             };
           }
           if (err instanceof PathNotFoundError) {
+            log.warn(`Path not found: ${err.path} in skill ${err.skill}`, {
+              error: err.constructor.name,
+              skill: err.skill,
+              path: err.path,
+            });
             return {
               content: `Path not found: ${err.path}. Contents of skill "${err.skill}":\n${err.listing}\n\nUse path "SKILL.md" to read the main skill document.`,
             };
           }
           if (err instanceof InvalidPathError) {
+            log.warn(`Invalid path: ${err.path}`, {
+              error: err.constructor.name,
+              path: err.path,
+            });
+            const available = await getAvailableSkillNames({ octokit, flags });
             return {
               content: `${err.message}. Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`,
             };
