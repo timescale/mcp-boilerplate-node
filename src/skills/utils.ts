@@ -482,9 +482,13 @@ const getSkillContent = async ({
       const root = Path.resolve(skill.path);
       const target = Path.resolve(Path.join(root, normalizedPath));
       if (targetPath !== '.' && !target.startsWith(root)) {
-        throw new SkillsApiError(`Invalid path: ${targetPath}`, 'INVALID_PATH', {
-          path: targetPath,
-        });
+        throw new SkillsApiError(
+          `Invalid path: ${targetPath}`,
+          'INVALID_PATH',
+          {
+            path: targetPath,
+          },
+        );
       }
       let stats: Awaited<ReturnType<typeof stat>>;
       try {
@@ -499,7 +503,11 @@ const getSkillContent = async ({
         throw new SkillsApiError(
           `Path not found: ${targetPath}.`,
           'PATH_NOT_FOUND',
-          { skill: skill.name, path: targetPath, listing: listing || '(empty)' },
+          {
+            skill: skill.name,
+            path: targetPath,
+            listing: listing || '(empty)',
+          },
         );
       }
       if (stats.isDirectory()) {

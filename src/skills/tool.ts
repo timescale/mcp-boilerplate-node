@@ -9,8 +9,8 @@ import {
   getAvailableSkillNames,
   listSkills,
   parseSkillsFlags,
-  skillsDescription,
   SkillsApiError,
+  skillsDescription,
   viewSkillContent,
 } from './utils.js';
 
