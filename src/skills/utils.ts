@@ -1,3 +1,4 @@
+import type { Stats } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import Path from 'node:path';
 import type { Octokit } from '@octokit/rest';
