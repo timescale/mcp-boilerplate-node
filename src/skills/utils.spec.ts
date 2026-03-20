@@ -4,8 +4,10 @@ import { tmpdir } from 'node:os';
 import Path from 'node:path';
 import {
   getAvailableSkillNames,
+  InvalidPathError,
   listSkills,
-  SkillsApiError,
+  PathNotFoundError,
+  SkillNotFoundError,
   viewSkillContent,
 } from './utils.js';
 
@@ -124,67 +126,65 @@ second-skill:
       expect(result).toBe('First skill content\n');
     });
 
-    it('skill not found: viewSkillContent throws SkillsApiError SKILL_NOT_FOUND', async () => {
+    it('skill not found: viewSkillContent throws SkillNotFoundError', async () => {
       try {
         await viewSkillContent({ name: 'nonexistent-skill', path: 'SKILL.md' });
-        throw new Error('Expected SkillsApiError to be thrown');
+        throw new Error('Expected SkillNotFoundError to be thrown');
       } catch (err) {
-        expect(err).toBeInstanceOf(SkillsApiError);
-        expect((err as SkillsApiError).code).toBe('SKILL_NOT_FOUND');
-        expect((err as SkillsApiError).details?.name).toBe('nonexistent-skill');
+        expect(err).toBeInstanceOf(SkillNotFoundError);
+        expect((err as SkillNotFoundError).skillName).toBe('nonexistent-skill');
       }
     });
 
-    it('skill not found with another name: throws SkillsApiError SKILL_NOT_FOUND', async () => {
+    it('skill not found with another name: throws SkillNotFoundError', async () => {
       try {
         await viewSkillContent({
           name: 'another-missing-skill',
           path: 'SKILL.md',
         });
-        throw new Error('Expected SkillsApiError to be thrown');
+        throw new Error('Expected SkillNotFoundError to be thrown');
       } catch (err) {
-        expect(err).toBeInstanceOf(SkillsApiError);
-        expect((err as SkillsApiError).details?.name).toBe(
+        expect(err).toBeInstanceOf(SkillNotFoundError);
+        expect((err as SkillNotFoundError).skillName).toBe(
           'another-missing-skill',
         );
       }
     });
 
-    it('path not found inside valid skill: viewSkillContent throws SkillsApiError PATH_NOT_FOUND', async () => {
+    it('path not found inside valid skill: viewSkillContent throws PathNotFoundError', async () => {
       try {
         await viewSkillContent({
           name: 'first-skill',
           path: 'indexing-strategies',
         });
-        throw new Error('Expected SkillsApiError to be thrown');
+        throw new Error('Expected PathNotFoundError to be thrown');
       } catch (err) {
-        expect(err).toBeInstanceOf(SkillsApiError);
-        expect((err as SkillsApiError).code).toBe('PATH_NOT_FOUND');
-        expect((err as SkillsApiError).details?.skill).toBe('first-skill');
-        expect((err as SkillsApiError).details?.listing).toContain('SKILL.md');
+        expect(err).toBeInstanceOf(PathNotFoundError);
+        expect((err as PathNotFoundError).skill).toBe('first-skill');
+        expect((err as PathNotFoundError).listing).toContain('SKILL.md');
       }
     });
 
-    it('invalid path directory traversal: viewSkillContent throws SkillsApiError INVALID_PATH', async () => {
+    it('invalid path directory traversal: viewSkillContent throws InvalidPathError', async () => {
       try {
         await viewSkillContent({
           name: 'first-skill',
           path: '../../etc/passwd',
         });
-        throw new Error('Expected SkillsApiError to be thrown');
+        throw new Error('Expected InvalidPathError to be thrown');
       } catch (err) {
-        expect(err).toBeInstanceOf(SkillsApiError);
-        expect((err as SkillsApiError).code).toBe('INVALID_PATH');
+        expect(err).toBeInstanceOf(InvalidPathError);
+        expect((err as InvalidPathError).path).toBe('../../etc/passwd');
       }
     });
 
-    it('invalid path with null byte: viewSkillContent throws SkillsApiError INVALID_PATH', async () => {
+    it('invalid path with null byte: viewSkillContent throws InvalidPathError', async () => {
       await expect(
         viewSkillContent({
           name: 'first-skill',
           path: 'SKILL.md\x00.txt',
         }),
-      ).rejects.toThrow(SkillsApiError);
+      ).rejects.toThrow(InvalidPathError);
     });
   });
 });

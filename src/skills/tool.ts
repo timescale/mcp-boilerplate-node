@@ -7,8 +7,11 @@ import {
 } from './types.js';
 import {
   getAvailableSkillNames,
+  InvalidPathError,
   listSkills,
+  PathNotFoundError,
   parseSkillsFlags,
+  SkillNotFoundError,
   SkillsApiError,
   skillsDescription,
   viewSkillContent,
@@ -78,18 +81,17 @@ export const createViewSkillToolFactory =
             throw err;
           }
           const available = await getAvailableSkillNames({ octokit, flags });
-          const d = err.details ?? {};
-          if (err.code === 'SKILL_NOT_FOUND') {
+          if (err instanceof SkillNotFoundError) {
             return {
-              content: `Skill not found: ${d.name}. Available skills: ${available}. Use one of these names.`,
+              content: `Skill not found: ${err.skillName}. Available skills: ${available}. Use one of these names.`,
             };
           }
-          if (err.code === 'PATH_NOT_FOUND') {
+          if (err instanceof PathNotFoundError) {
             return {
-              content: `Path not found: ${d.path}. Contents of skill "${d.skill}":\n${d.listing ?? '(empty)'}\n\nUse path "SKILL.md" to read the main skill document.`,
+              content: `Path not found: ${err.path}. Contents of skill "${err.skill}":\n${err.listing}\n\nUse path "SKILL.md" to read the main skill document.`,
             };
           }
-          if (err.code === 'INVALID_PATH') {
+          if (err instanceof InvalidPathError) {
             return {
               content: `${err.message}. Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`,
             };

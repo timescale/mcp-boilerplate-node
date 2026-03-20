@@ -355,24 +355,32 @@ export const skillVisible = (name: string, flags: SkillsFlags): boolean => {
   return true;
 };
 
-/** Thrown so the tool can catch and format; do not handle in utils. */
+/** Base class for skills API errors; catch in tool.ts to format recovery messages. */
 export class SkillsApiError extends Error {
-  constructor(
-    message: string,
-    public readonly code: 'SKILL_NOT_FOUND' | 'PATH_NOT_FOUND' | 'INVALID_PATH',
-    public readonly details?: {
-      /** Requested skill name (SKILL_NOT_FOUND) */
-      name?: string;
-      /** Skill the path belongs to (PATH_NOT_FOUND) */
-      skill?: string;
-      /** Requested path (PATH_NOT_FOUND, INVALID_PATH) */
-      path?: string;
-      /** Directory listing of the skill root (PATH_NOT_FOUND) */
-      listing?: string;
-    },
-  ) {
+  constructor(message: string) {
     super(message);
-    this.name = 'SkillsApiError';
+  }
+}
+
+export class SkillNotFoundError extends SkillsApiError {
+  constructor(public readonly skillName: string) {
+    super(`Skill not found: ${skillName}.`);
+  }
+}
+
+export class PathNotFoundError extends SkillsApiError {
+  constructor(
+    public readonly skill: string,
+    public readonly path: string,
+    public readonly listing: string,
+  ) {
+    super(`Path not found: ${path}.`);
+  }
+}
+
+export class InvalidPathError extends SkillsApiError {
+  constructor(public readonly path: string) {
+    super(`Invalid path: ${path}`);
   }
 }
 
@@ -432,9 +440,7 @@ export const viewSkillContent = async ({
 }): Promise<string> => {
   const skill = await resolveSkill({ octokit, flags, name });
   if (!skill) {
-    throw new SkillsApiError(`Skill not found: ${name}.`, 'SKILL_NOT_FOUND', {
-      name,
-    });
+    throw new SkillNotFoundError(name);
   }
 
   const targetPath = passedPath || 'SKILL.md';
@@ -460,9 +466,7 @@ const normalizeSkillPath = (path: string): string => {
     normalizedPath.split('/').some((s) => s === '..') ||
     normalizedPath.includes('\0')
   ) {
-    throw new SkillsApiError(`Invalid path: ${path}`, 'INVALID_PATH', {
-      path,
-    });
+    throw new InvalidPathError(path);
   }
   return normalizedPath;
 };
@@ -482,13 +486,7 @@ const getSkillContent = async ({
       const root = Path.resolve(skill.path);
       const target = Path.resolve(Path.join(root, normalizedPath));
       if (targetPath !== '.' && !target.startsWith(root)) {
-        throw new SkillsApiError(
-          `Invalid path: ${targetPath}`,
-          'INVALID_PATH',
-          {
-            path: targetPath,
-          },
-        );
+        throw new InvalidPathError(targetPath);
       }
       let stats: Awaited<ReturnType<typeof stat>>;
       try {
@@ -500,14 +498,10 @@ const getSkillContent = async ({
         const listing = entries
           .map((entry) => `${entry.isDirectory() ? '📁' : '📄'} ${entry.name}`)
           .join('\n');
-        throw new SkillsApiError(
-          `Path not found: ${targetPath}.`,
-          'PATH_NOT_FOUND',
-          {
-            skill: skill.name,
-            path: targetPath,
-            listing: listing || '(empty)',
-          },
+        throw new PathNotFoundError(
+          skill.name,
+          targetPath,
+          listing || '(empty)',
         );
       }
       if (stats.isDirectory()) {
