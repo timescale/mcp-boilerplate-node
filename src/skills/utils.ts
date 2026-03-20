@@ -357,11 +357,7 @@ export const skillVisible = (name: string, flags: SkillsFlags): boolean => {
 };
 
 /** Base class for skills API errors; catch in tool.ts to format recovery messages. */
-export class SkillsApiError extends Error {
-  constructor(message: string) {
-    super(message);
-  }
-}
+export class SkillsApiError extends Error {}
 
 export class SkillNotFoundError extends SkillsApiError {
   constructor(public readonly skillName: string) {
