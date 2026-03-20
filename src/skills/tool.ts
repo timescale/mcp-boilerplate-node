@@ -6,9 +6,11 @@ import {
   zViewSkillOutputSchema,
 } from './types.js';
 import {
+  getAvailableSkillNames,
   listSkills,
   parseSkillsFlags,
   skillsDescription,
+  SkillsApiError,
   viewSkillContent,
 } from './utils.js';
 
@@ -62,14 +64,38 @@ export const createViewSkillToolFactory =
             content: await listSkills({ octokit, flags }),
           };
         }
-        return {
-          content: await viewSkillContent({
-            octokit,
-            flags,
-            name,
-            path,
-          }),
-        };
+        try {
+          return {
+            content: await viewSkillContent({
+              octokit,
+              flags,
+              name,
+              path,
+            }),
+          };
+        } catch (err) {
+          if (!(err instanceof SkillsApiError)) {
+            throw err;
+          }
+          const available = await getAvailableSkillNames({ octokit, flags });
+          const d = err.details ?? {};
+          if (err.code === 'SKILL_NOT_FOUND') {
+            return {
+              content: `Skill not found: ${d.name}. Available skills: ${available}. Use one of these names.`,
+            };
+          }
+          if (err.code === 'PATH_NOT_FOUND') {
+            return {
+              content: `Path not found: ${d.path}. Contents of skill "${d.skill}":\n${d.listing ?? '(empty)'}\n\nUse path "SKILL.md" to read the main skill document.`,
+            };
+          }
+          if (err.code === 'INVALID_PATH') {
+            return {
+              content: `${err.message}. Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`,
+            };
+          }
+          throw err;
+        }
       },
     };
   };

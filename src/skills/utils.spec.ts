@@ -5,6 +5,7 @@ import Path from 'node:path';
 import {
   getAvailableSkillNames,
   listSkills,
+  SkillsApiError,
   viewSkillContent,
 } from './utils.js';
 
@@ -108,6 +109,11 @@ second-skill:
       expect(result).toContain('<available_skills>');
       expect(result).toContain('first-skill');
       expect(result).toContain('second-skill');
+      const inner = result
+        .split('<available_skills>')[1]
+        .split('</available_skills>')[0];
+      const lines = inner.trim().split('\n');
+      expect(lines).toHaveLength(3);
     });
 
     it('read valid skill: returns the content of the skill SKILL.md when name and path are valid', async () => {
@@ -115,65 +121,70 @@ second-skill:
         name: 'first-skill',
         path: 'SKILL.md',
       });
-      expect(result).toContain('First skill content');
+      expect(result).toBe('First skill content\n');
     });
 
-    it('skill not found: returns a recovery string with the requested name and available skill names when the skill does not exist', async () => {
-      const result = await viewSkillContent({
-        name: 'nonexistent-skill',
-        path: 'SKILL.md',
-      });
-      expect(result).toContain('Skill not found: nonexistent-skill.');
-      expect(result).toContain('Available skills:');
-      expect(result).toContain('first-skill');
-      expect(result).toContain('second-skill');
-      expect(result).toContain('Use one of these names.');
+    it('skill not found: viewSkillContent throws SkillsApiError SKILL_NOT_FOUND', async () => {
+      try {
+        await viewSkillContent({ name: 'nonexistent-skill', path: 'SKILL.md' });
+        throw new Error('Expected SkillsApiError to be thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(SkillsApiError);
+        expect((err as SkillsApiError).code).toBe('SKILL_NOT_FOUND');
+        expect((err as SkillsApiError).details?.name).toBe('nonexistent-skill');
+      }
     });
 
-    it('skill not found with another name: returns the same recovery pattern for a different missing skill name', async () => {
-      const result = await viewSkillContent({
-        name: 'another-missing-skill',
-        path: 'SKILL.md',
-      });
-      expect(result).toContain('Skill not found: another-missing-skill.');
-      expect(result).toContain('Available skills:');
-      expect(result).toContain('Use one of these names.');
+    it('skill not found with another name: throws SkillsApiError SKILL_NOT_FOUND', async () => {
+      try {
+        await viewSkillContent({
+          name: 'another-missing-skill',
+          path: 'SKILL.md',
+        });
+        throw new Error('Expected SkillsApiError to be thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(SkillsApiError);
+        expect((err as SkillsApiError).details?.name).toBe(
+          'another-missing-skill',
+        );
+      }
     });
 
-    it('path not found inside valid skill: returns a recovery string with path not found, skill name, directory listing and hint to use SKILL.md', async () => {
-      const result = await viewSkillContent({
-        name: 'first-skill',
-        path: 'indexing-strategies',
-      });
-      expect(result).toContain('Path not found: indexing-strategies.');
-      expect(result).toContain('Contents of skill "first-skill"');
-      expect(result).toContain('SKILL.md');
-      expect(result).toContain(
-        'Use path "SKILL.md" to read the main skill document.',
-      );
+    it('path not found inside valid skill: viewSkillContent throws SkillsApiError PATH_NOT_FOUND', async () => {
+      try {
+        await viewSkillContent({
+          name: 'first-skill',
+          path: 'indexing-strategies',
+        });
+        throw new Error('Expected SkillsApiError to be thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(SkillsApiError);
+        expect((err as SkillsApiError).code).toBe('PATH_NOT_FOUND');
+        expect((err as SkillsApiError).details?.skill).toBe('first-skill');
+        expect((err as SkillsApiError).details?.listing).toContain('SKILL.md');
+      }
     });
 
-    it('invalid path directory traversal: returns a recovery string containing Invalid path and available skills when path attempts traversal', async () => {
-      const result = await viewSkillContent({
-        name: 'first-skill',
-        path: '../../etc/passwd',
-      });
-      expect(result).toContain('Invalid path: ../../etc/passwd');
-      expect(result).toContain('Available skills:');
-      expect(result).toContain('Use name "." to list skills');
-      expect(result).toContain('use path "." to list a skill\'s contents');
+    it('invalid path directory traversal: viewSkillContent throws SkillsApiError INVALID_PATH', async () => {
+      try {
+        await viewSkillContent({
+          name: 'first-skill',
+          path: '../../etc/passwd',
+        });
+        throw new Error('Expected SkillsApiError to be thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(SkillsApiError);
+        expect((err as SkillsApiError).code).toBe('INVALID_PATH');
+      }
     });
 
-    it('invalid path with null byte: returns a recovery string and does not throw when path contains null byte', async () => {
-      const result = await viewSkillContent({
-        name: 'first-skill',
-        path: 'SKILL.md\x00.txt',
-      });
-      expect(typeof result).toBe('string');
-      expect(result.length).toBeGreaterThan(0);
-      expect(
-        result.includes('Path not found:') || result.includes('Invalid path:'),
-      ).toBe(true);
+    it('invalid path with null byte: viewSkillContent throws SkillsApiError INVALID_PATH', async () => {
+      await expect(
+        viewSkillContent({
+          name: 'first-skill',
+          path: 'SKILL.md\x00.txt',
+        }),
+      ).rejects.toThrow(SkillsApiError);
     });
   });
 });

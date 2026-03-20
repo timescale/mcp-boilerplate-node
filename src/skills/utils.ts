@@ -355,6 +355,27 @@ export const skillVisible = (name: string, flags: SkillsFlags): boolean => {
   return true;
 };
 
+/** Thrown so the tool can catch and format; do not handle in utils. */
+export class SkillsApiError extends Error {
+  constructor(
+    message: string,
+    public readonly code: 'SKILL_NOT_FOUND' | 'PATH_NOT_FOUND' | 'INVALID_PATH',
+    public readonly details?: {
+      /** Requested skill name (SKILL_NOT_FOUND) */
+      name?: string;
+      /** Skill the path belongs to (PATH_NOT_FOUND) */
+      skill?: string;
+      /** Requested path (PATH_NOT_FOUND, INVALID_PATH) */
+      path?: string;
+      /** Directory listing of the skill root (PATH_NOT_FOUND) */
+      listing?: string;
+    },
+  ) {
+    super(message);
+    this.name = 'SkillsApiError';
+  }
+}
+
 /** Comma-separated visible skill names for error/recovery messages. */
 export const getAvailableSkillNames = async ({
   octokit,
@@ -411,28 +432,20 @@ export const viewSkillContent = async ({
 }): Promise<string> => {
   const skill = await resolveSkill({ octokit, flags, name });
   if (!skill) {
-    log.warn('Skills API recovery', { reason: 'skill_not_found', name });
-    const available = await getAvailableSkillNames({ octokit, flags });
-    return `Skill not found: ${name}. Available skills: ${available}. Use one of these names.`;
+    throw new SkillsApiError(`Skill not found: ${name}.`, 'SKILL_NOT_FOUND', {
+      name,
+    });
   }
 
   const targetPath = passedPath || 'SKILL.md';
-  try {
-    const cacheKey = `${name}/${normalizeSkillPath(targetPath)}`;
-    const cached = skillContentCache.get(cacheKey);
-    if (cached) {
-      return cached;
-    }
-    const content = await getSkillContent({ octokit, skill, path: targetPath });
-    skillContentCache.set(cacheKey, content);
-    return content;
-  } catch (err) {
-    const message = (err as Error).message;
-    log.warn('Skills API recovery', { reason: 'error', message });
-    const available = await getAvailableSkillNames({ octokit, flags });
-    const recovery = `Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`;
-    return `${message}. ${recovery}`;
+  const cacheKey = `${name}/${normalizeSkillPath(targetPath)}`;
+  const cached = skillContentCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
+  const content = await getSkillContent({ octokit, skill, path: targetPath });
+  skillContentCache.set(cacheKey, content);
+  return content;
 };
 
 const normalizeSkillPath = (path: string): string => {
@@ -447,7 +460,9 @@ const normalizeSkillPath = (path: string): string => {
     normalizedPath.split('/').some((s) => s === '..') ||
     normalizedPath.includes('\0')
   ) {
-    throw new Error(`Invalid path: ${path}`);
+    throw new SkillsApiError(`Invalid path: ${path}`, 'INVALID_PATH', {
+      path,
+    });
   }
   return normalizedPath;
 };
@@ -467,24 +482,25 @@ const getSkillContent = async ({
       const root = Path.resolve(skill.path);
       const target = Path.resolve(Path.join(root, normalizedPath));
       if (targetPath !== '.' && !target.startsWith(root)) {
-        throw new Error(`Invalid path: ${targetPath}`);
+        throw new SkillsApiError(`Invalid path: ${targetPath}`, 'INVALID_PATH', {
+          path: targetPath,
+        });
       }
       let stats: Awaited<ReturnType<typeof stat>>;
       try {
         stats = await stat(target);
       } catch {
-        log.warn('Skills API recovery', {
-          reason: 'path_not_found',
-          skill: skill.name,
-          path: targetPath,
-        });
         const entries = await readdir(root, { withFileTypes: true }).catch(
           () => [],
         );
         const listing = entries
           .map((entry) => `${entry.isDirectory() ? '📁' : '📄'} ${entry.name}`)
           .join('\n');
-        return `Path not found: ${targetPath}. Contents of skill "${skill.name}":\n${listing || '(empty)'}\n\nUse path "SKILL.md" to read the main skill document.`;
+        throw new SkillsApiError(
+          `Path not found: ${targetPath}.`,
+          'PATH_NOT_FOUND',
+          { skill: skill.name, path: targetPath, listing: listing || '(empty)' },
+        );
       }
       if (stats.isDirectory()) {
         const entries = await readdir(target, {
