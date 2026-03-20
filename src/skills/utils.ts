@@ -488,7 +488,7 @@ const getSkillContent = async ({
       if (targetPath !== '.' && !target.startsWith(root)) {
         throw new InvalidPathError(targetPath);
       }
-      let stats: Awaited<ReturnType<typeof stat>>;
+      let stats: Stats;
       try {
         stats = await stat(target);
       } catch {
