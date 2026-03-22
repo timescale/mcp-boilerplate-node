@@ -161,6 +161,7 @@ second-skill:
       } catch (err) {
         expect(err).toBeInstanceOf(PathNotFoundError);
         expect((err as PathNotFoundError).skill).toBe('first-skill');
+        expect((err as PathNotFoundError).path).toBe('indexing-strategies');
         expect((err as PathNotFoundError).listing).toContain('SKILL.md');
       }
     });

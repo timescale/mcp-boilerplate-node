@@ -377,7 +377,7 @@ export class PathNotFoundError extends SkillsApiError {
 
 export class InvalidPathError extends SkillsApiError {
   constructor(public readonly path: string) {
-    super(`Invalid path: ${path}`);
+    super(`Invalid path: ${path}.`);
   }
 }
 

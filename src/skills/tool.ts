@@ -108,7 +108,7 @@ export const createViewSkillToolFactory =
             });
             const available = await getAvailableSkillNames({ octokit, flags });
             return {
-              content: `${err.message}. Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`,
+              content: `${err.message} Available skills: ${available}. Use name "." to list skills; use path "." to list a skill's contents.`,
             };
           }
           throw err;
