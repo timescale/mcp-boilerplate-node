@@ -9,7 +9,11 @@ import {
   viewSkillContent,
 } from './utils.js';
 
-process.env.SKILLS_FILE = Path.resolve(import.meta.dir, '__fixtures__', 'skills.yaml');
+process.env.SKILLS_FILE = Path.resolve(
+  import.meta.dir,
+  '__fixtures__',
+  'skills.yaml',
+);
 
 describe('Skills API', () => {
   describe('getAvailableSkillNames', () => {

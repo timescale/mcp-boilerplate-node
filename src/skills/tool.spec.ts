@@ -12,7 +12,11 @@ import { log } from '../logger.js';
 import { createViewSkillToolFactory } from './tool.js';
 import type { ViewSkillOutputSchema } from './types.js';
 
-process.env.SKILLS_FILE = Path.resolve(import.meta.dir, '__fixtures__', 'skills.yaml');
+process.env.SKILLS_FILE = Path.resolve(
+  import.meta.dir,
+  '__fixtures__',
+  'skills.yaml',
+);
 
 describe('createViewSkillToolFactory', () => {
   let warnSpy: ReturnType<typeof spyOn<typeof log, 'warn'>>;
