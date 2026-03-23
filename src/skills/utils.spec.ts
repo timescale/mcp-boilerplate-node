@@ -1,6 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { describe, expect, it } from 'bun:test';
 import Path from 'node:path';
 import {
   getAvailableSkillNames,
@@ -11,66 +9,9 @@ import {
   viewSkillContent,
 } from './utils.js';
 
+process.env.SKILLS_FILE = Path.resolve(import.meta.dir, '__fixtures__', 'skills.yaml');
+
 describe('Skills API', () => {
-  let tempRoot = '';
-  let previousSkillsFile: string | undefined;
-
-  beforeAll(async () => {
-    previousSkillsFile = process.env.SKILLS_FILE;
-    tempRoot = await mkdtemp(Path.join(tmpdir(), 'skills-test-'));
-
-    const firstSkillDir = Path.join(tempRoot, 'first-skill');
-    const secondSkillDir = Path.join(tempRoot, 'second-skill');
-    await mkdir(firstSkillDir, { recursive: true });
-    await mkdir(secondSkillDir, { recursive: true });
-
-    await writeFile(
-      Path.join(firstSkillDir, 'SKILL.md'),
-      `---
-name: first-skill
-description: First test skill
----
-First skill content
-`,
-      'utf-8',
-    );
-    await writeFile(
-      Path.join(secondSkillDir, 'SKILL.md'),
-      `---
-name: second-skill
-description: Second test skill
----
-Second skill content
-`,
-      'utf-8',
-    );
-
-    await writeFile(
-      Path.join(tempRoot, 'skills.yaml'),
-      `first-skill:
-  type: local
-  path: ${firstSkillDir}
-second-skill:
-  type: local
-  path: ${secondSkillDir}
-`,
-      'utf-8',
-    );
-
-    process.env.SKILLS_FILE = Path.join(tempRoot, 'skills.yaml');
-  });
-
-  afterAll(async () => {
-    if (previousSkillsFile === undefined) {
-      delete process.env.SKILLS_FILE;
-    } else {
-      process.env.SKILLS_FILE = previousSkillsFile;
-    }
-    if (tempRoot) {
-      await rm(tempRoot, { recursive: true, force: true });
-    }
-  });
-
   describe('getAvailableSkillNames', () => {
     it('returns a comma-separated list of visible skill names in alphabetical order when skills are loaded', async () => {
       const names = await getAvailableSkillNames({});

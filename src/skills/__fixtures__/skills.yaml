@@ -1,0 +1,6 @@
+first-skill:
+  type: local
+  path: ./src/skills/__fixtures__/first-skill
+second-skill:
+  type: local
+  path: ./src/skills/__fixtures__/second-skill
