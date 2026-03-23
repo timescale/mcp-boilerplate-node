@@ -38,7 +38,7 @@
     "prepublishOnly": "tsc",
     "watch": "tsc --watch",
     "lint": "./bun x @biomejs/biome check",
-    "test": "bun test"
+    "test": "./bun test ./src"
   },
   "dependencies": {
     "@mcp-use/inspector": "^0.14.0",
