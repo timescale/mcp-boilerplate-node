@@ -2,6 +2,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runMigrations } from './migrate.js';
 import type { DatabaseConfiguration } from './types.js';
+import { log } from './logger.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -15,12 +16,19 @@ export async function cliEntrypoint(
   const args = process.argv.slice(2);
   const scriptName = args[0] || 'stdio';
   try {
-    // Dynamically import only the requested module to prevent all modules from initializing
     if (dbConfig) {
-      console.log('Database configuration received', dbConfig);
-
-      await runMigrations(dbConfig);
+      log.info('starting server...');
+      try {
+        log.info('Running database migrations...');
+        await runMigrations(dbConfig);
+        log.info('Database migrations completed successfully');
+      } catch (error) {
+        log.error('Database migration failed:', error as Error);
+        throw error;
+      }
     }
+
+    // Dynamically import only the requested module to prevent all modules from initializing
     switch (scriptName) {
       case 'stdio': {
         // Import and run the stdio server
