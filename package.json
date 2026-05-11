@@ -55,7 +55,9 @@
     "express": "^5.2.1",
     "gray-matter": "^4.0.3",
     "raw-body": "^3.0.2",
-    "yaml": "^2.8.2"
+    "yaml": "^2.8.2",
+    "migrate": "^2.1.0",
+    "pg": "^8.16.3"
   },
   "peerDependencies": {
     "zod": "^3.25 || ^4.0"

@@ -183,3 +183,8 @@ export type InferSchema<T extends Record<string, z.ZodType>> = Flatten<
     [K in OptionalKeys<T>]?: z.infer<T[K]>;
   }
 >;
+
+export interface DatabaseConfiguration {
+  migrationsDirectory: string;
+  schema: string;
+}

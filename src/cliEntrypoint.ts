@@ -1,5 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runMigrations } from './migrate.js';
+import type { DatabaseConfiguration } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -7,12 +9,18 @@ export async function cliEntrypoint(
   stdioEntrypoint: string,
   httpEntrypoint: string,
   instrumentation = join(__dirname, './instrumentation.js'),
+  dbConfig?: DatabaseConfiguration,
 ): Promise<void> {
   // Parse command line arguments first
   const args = process.argv.slice(2);
   const scriptName = args[0] || 'stdio';
   try {
     // Dynamically import only the requested module to prevent all modules from initializing
+    if (dbConfig) {
+      console.log('Database configuration received', dbConfig);
+
+      await runMigrations(dbConfig);
+    }
     switch (scriptName) {
       case 'stdio': {
         // Import and run the stdio server
