@@ -1,7 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { log } from './logger.js';
-import type { DatabaseConfiguration } from './types.js';
+import type { MigrationsConfig } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -9,7 +9,7 @@ export async function cliEntrypoint(
   stdioEntrypoint: string,
   httpEntrypoint: string,
   instrumentation = join(__dirname, './instrumentation.js'),
-  dbConfig?: DatabaseConfiguration,
+  dbConfig?: MigrationsConfig,
 ): Promise<void> {
   // Parse command line arguments first
   const args = process.argv.slice(2);

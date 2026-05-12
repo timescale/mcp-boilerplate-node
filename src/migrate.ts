@@ -2,30 +2,28 @@ import { createHash } from 'node:crypto';
 import type { FileStore, MigrationSet } from 'migrate';
 import migrate from 'migrate';
 import { Client } from 'pg';
-import type { DatabaseConfiguration } from './types.js';
-
-// Use a hash of the project name
-const hash = createHash('sha256')
-  .update('tiger-memory-mcp-server')
-  .digest('hex');
-const MIGRATION_ADVISORY_LOCK_ID = parseInt(hash.substring(0, 15), 16);
+import type { MigrationsConfig } from './types.js';
 
 interface Store extends FileStore {
   close(): Promise<void>;
 }
 
-const createStateStore = (schema: string): Store => {
+const createStateStore = (name: string, schema: string): Store => {
   let client: Client;
 
   return {
     async load(callback: Parameters<FileStore['load']>[0]): Promise<void> {
+      // Use a hash of the project name to create a lock
+      const hash = createHash('sha256').update(name).digest('hex');
+      const advisoryLockId = parseInt(hash.substring(0, 15), 16);
+
       try {
         client = new Client();
         await client.connect();
 
         // Acquire advisory lock to prevent concurrent migrations
         await client.query(/* sql */ `SELECT pg_advisory_lock($1)`, [
-          MIGRATION_ADVISORY_LOCK_ID,
+          advisoryLockId,
         ]);
 
         // Ensure migrations table exists
@@ -81,11 +79,11 @@ const createStateStore = (schema: string): Store => {
 };
 
 export const runMigrations = async (
-  config: DatabaseConfiguration,
+  config: MigrationsConfig,
 ): Promise<void> => {
-  const { schema, migrationsDirectory } = config;
+  const { schema, migrationsDirectory, serviceName } = config;
   return new Promise((resolve, reject) => {
-    const stateStore = createStateStore(schema);
+    const stateStore = createStateStore(serviceName, schema);
 
     migrate.load(
       {
