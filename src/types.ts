@@ -186,6 +186,6 @@ export type InferSchema<T extends Record<string, z.ZodType>> = Flatten<
 
 export interface MigrationsConfig {
   serviceName: string;
-  migrationsDirectory: string;
-  schema: string;
+  migrationsDirectory?: string;
+  schema?: string;
 }

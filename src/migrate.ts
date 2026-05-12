@@ -8,7 +8,7 @@ interface Store extends FileStore {
   close(): Promise<void>;
 }
 
-const createStateStore = (name: string, schema: string): Store => {
+const createStateStore = (name: string, schema: string = 'public'): Store => {
   let client: Client;
 
   // Use a hash of the project name to create a lock
@@ -78,34 +78,34 @@ const createStateStore = (name: string, schema: string): Store => {
   };
 };
 
-export const runMigrations = async (
-  config: MigrationsConfig,
-): Promise<void> => {
+export const createMigrator = (config: MigrationsConfig) => {
   const { schema, migrationsDirectory, serviceName } = config;
-  return new Promise((resolve, reject) => {
-    const stateStore = createStateStore(serviceName, schema);
-
-    migrate.load(
-      {
-        stateStore,
-        migrationsDirectory: migrationsDirectory,
-      },
-      (err, set) => {
-        if (err) {
-          stateStore.close().finally(() => reject(err));
-          return;
-        }
-
-        set.up((err) => {
-          stateStore.close().finally(() => {
+  const stateStore = createStateStore(serviceName, schema);
+  return {
+    run: async () =>
+      new Promise<void>((resolve, reject) => {
+        migrate.load(
+          {
+            stateStore,
+            migrationsDirectory: migrationsDirectory ?? './migrations',
+          },
+          (err, set) => {
             if (err) {
-              reject(err);
-            } else {
-              resolve();
+              stateStore.close().finally(() => reject(err));
+              return;
             }
-          });
-        });
-      },
-    );
-  });
+
+            set.up((err) => {
+              stateStore.close().finally(() => {
+                if (err) {
+                  reject(err);
+                } else {
+                  resolve();
+                }
+              });
+            });
+          },
+        );
+      }),
+  };
 };
