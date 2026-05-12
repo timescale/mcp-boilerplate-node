@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import type { FileStore, MigrationSet } from 'migrate';
 import migrate from 'migrate';
 import { Client } from 'pg';
-import type { MigrationsConfig } from './types.js';
 import { log } from './logger.js';
+import type { MigrationsConfig } from './types.js';
 
 interface Store extends FileStore {
   close(): Promise<void>;
