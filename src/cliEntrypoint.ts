@@ -18,14 +18,7 @@ export async function cliEntrypoint(
     if (dbConfig) {
       const { createMigrator } = await import('./migrate.js');
       log.info('starting server...');
-      try {
-        log.info('Running database migrations...');
-        await createMigrator(dbConfig).run();
-        log.info('Database migrations completed successfully');
-      } catch (error) {
-        log.error('Database migration failed:', error as Error);
-        throw error;
-      }
+      await createMigrator(dbConfig).run();
     }
 
     // Dynamically import only the requested module to prevent all modules from initializing

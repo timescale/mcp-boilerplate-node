@@ -3,6 +3,7 @@ import type { FileStore, MigrationSet } from 'migrate';
 import migrate from 'migrate';
 import { Client } from 'pg';
 import type { MigrationsConfig } from './types.js';
+import { log } from './logger.js';
 
 interface Store extends FileStore {
   close(): Promise<void>;
@@ -84,6 +85,7 @@ export const createMigrator = (config: MigrationsConfig) => {
   return {
     run: async () =>
       new Promise<void>((resolve, reject) => {
+        log.info('Running database migrations...');
         migrate.load(
           {
             stateStore,
@@ -91,6 +93,7 @@ export const createMigrator = (config: MigrationsConfig) => {
           },
           (err, set) => {
             if (err) {
+              log.error('Database migration failed:', err as Error);
               stateStore.close().finally(() => reject(err));
               return;
             }
@@ -98,8 +101,10 @@ export const createMigrator = (config: MigrationsConfig) => {
             set.up((err) => {
               stateStore.close().finally(() => {
                 if (err) {
+                  log.error('Database migration failed:', err as Error);
                   reject(err);
                 } else {
+                  log.info('Database migrations completed successfully');
                   resolve();
                 }
               });
