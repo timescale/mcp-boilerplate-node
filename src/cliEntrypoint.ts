@@ -1,8 +1,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runMigrations } from './migrate.js';
-import type { DatabaseConfiguration } from './types.js';
 import { log } from './logger.js';
+import type { DatabaseConfiguration } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -17,6 +16,7 @@ export async function cliEntrypoint(
   const scriptName = args[0] || 'stdio';
   try {
     if (dbConfig) {
+      const { runMigrations } = await import('./migrate.js');
       log.info('starting server...');
       try {
         log.info('Running database migrations...');

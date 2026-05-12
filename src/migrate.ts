@@ -1,4 +1,4 @@
-import { createHash } from 'crypto';
+import { createHash } from 'node:crypto';
 import type { FileStore, MigrationSet } from 'migrate';
 import migrate from 'migrate';
 import { Client } from 'pg';
