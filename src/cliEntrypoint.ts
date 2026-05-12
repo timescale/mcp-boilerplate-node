@@ -16,11 +16,11 @@ export async function cliEntrypoint(
   const scriptName = args[0] || 'stdio';
   try {
     if (dbConfig) {
-      const { runMigrations } = await import('./migrate.js');
+      const { createMigrator } = await import('./migrate.js');
       log.info('starting server...');
       try {
         log.info('Running database migrations...');
-        await runMigrations(dbConfig);
+        await createMigrator(dbConfig).run();
         log.info('Database migrations completed successfully');
       } catch (error) {
         log.error('Database migration failed:', error as Error);
