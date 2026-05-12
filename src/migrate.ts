@@ -10,10 +10,11 @@ interface Store extends FileStore {
 
 const createStateStore = (name: string, schema: string): Store => {
   let client: Client;
-  // Use a hash of the project name to create a lock
 
+  // Use a hash of the project name to create a lock
   const hash = createHash('sha256').update(name).digest('hex');
   const advisoryLockId = parseInt(hash.substring(0, 15), 16);
+
   return {
     async load(callback: Parameters<FileStore['load']>[0]): Promise<void> {
       try {
