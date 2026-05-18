@@ -91,7 +91,8 @@ export const createMigrator = (config: MigrationsConfig) => {
         // files picks it up automatically, without touching the migration files.
         const prevPgOptions = process.env.PGOPTIONS;
         if (schema) {
-          process.env.PGOPTIONS = `${prevPgOptions ?? ''} --search_path=${schema},public`.trim();
+          process.env.PGOPTIONS =
+            `${prevPgOptions ?? ''} --search_path=${schema},public`.trim();
         }
 
         const restore = () => {
