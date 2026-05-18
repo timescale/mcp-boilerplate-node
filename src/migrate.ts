@@ -86,6 +86,24 @@ export const createMigrator = (config: MigrationsConfig) => {
     run: async () =>
       new Promise<void>((resolve, reject) => {
         log.info('Running database migrations...');
+
+        // Set search_path via PGOPTIONS so every pg.Client created by migration
+        // files picks it up automatically, without touching the migration files.
+        const prevPgOptions = process.env.PGOPTIONS;
+        if (schema) {
+          process.env.PGOPTIONS = `${prevPgOptions ?? ''} --search_path=${schema},public`.trim();
+        }
+
+        const restore = () => {
+          if (schema) {
+            if (prevPgOptions === undefined) {
+              delete process.env.PGOPTIONS;
+            } else {
+              process.env.PGOPTIONS = prevPgOptions;
+            }
+          }
+        };
+
         migrate.load(
           {
             stateStore,
@@ -93,12 +111,14 @@ export const createMigrator = (config: MigrationsConfig) => {
           },
           (err, set) => {
             if (err) {
+              restore();
               log.error('Database migration failed:', err as Error);
               stateStore.close().finally(() => reject(err));
               return;
             }
 
             set.up((err) => {
+              restore();
               stateStore.close().finally(() => {
                 if (err) {
                   log.error('Database migration failed:', err as Error);
