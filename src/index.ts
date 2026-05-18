@@ -11,6 +11,7 @@ export type {
   ApiFactory,
   InferSchema,
   McpFeatureFlags,
+  MigrationsConfig,
   ParsedQs,
   PromptFactory,
   ResourceFactory,
