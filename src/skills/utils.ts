@@ -265,7 +265,9 @@ const doLoadSkills = async (
               );
               break;
             }
-            promises.push(loadGitHubPath(owner, repo, cfg.path || '.', cfg.ref));
+            promises.push(
+              loadGitHubPath(owner, repo, cfg.path || '.', cfg.ref),
+            );
             break;
           }
           case 'github_collection': {
