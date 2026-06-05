@@ -40,6 +40,7 @@ export const zGitHubSkillCfg = z.object({
   type: z.literal('github'),
   repo: z.string(),
   path: z.string().optional(),
+  ref: z.string().optional(),
 });
 export type GitHubSkillCfg = z.infer<typeof zGitHubSkillCfg>;
 
@@ -47,6 +48,7 @@ export const zGitHubCollectionSkillCfg = zCollectionFlagsCfg.extend({
   type: z.literal('github_collection'),
   repo: z.string(),
   path: z.string().optional(),
+  ref: z.string().optional(),
 });
 export type GitHubCollectionSkillCfg = z.infer<
   typeof zGitHubCollectionSkillCfg
