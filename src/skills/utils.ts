@@ -173,6 +173,7 @@ const doLoadSkills = async (
     owner: string,
     repo: string,
     path: string,
+    ref?: string,
     flags?: CollectionFlags,
   ): Promise<void> => {
     if (shouldIgnorePath(path, flags)) return;
@@ -188,6 +189,7 @@ const doLoadSkills = async (
         owner,
         repo,
         path: skillPath,
+        ...(ref ? { ref } : {}),
       });
       if (
         Array.isArray(skillFileResponse.data) ||
@@ -197,6 +199,7 @@ const doLoadSkills = async (
           owner,
           repo,
           path: skillPath,
+          ref,
         });
         return;
       }
@@ -214,13 +217,14 @@ const doLoadSkills = async (
         type: 'github',
         repo: `${owner}/${repo}`,
         path,
+        ...(ref ? { ref } : {}),
         name,
         description,
       } satisfies GitHubSkill);
       skillContentCache.set(`${name}/SKILL.md`, content);
     } catch (err) {
       log.error(
-        `Failed to load skill at GitHub path: ${owner}/${repo}/${skillPath}\n${(err as Error).message}`,
+        `Failed to load skill at GitHub path: ${owner}/${repo}/${skillPath}${ref ? `@${ref}` : ''}\n${(err as Error).message}`,
       );
     }
   };
@@ -261,7 +265,9 @@ const doLoadSkills = async (
               );
               break;
             }
-            promises.push(loadGitHubPath(owner, repo, cfg.path || '.'));
+            promises.push(
+              loadGitHubPath(owner, repo, cfg.path || '.', cfg.ref),
+            );
             break;
           }
           case 'github_collection': {
@@ -287,12 +293,13 @@ const doLoadSkills = async (
               owner,
               repo,
               path: rootPath,
+              ...(cfg.ref ? { ref: cfg.ref } : {}),
             });
             if (!Array.isArray(dirResponse.data)) {
               log.error(
                 `Expected github_collection repo path to be a directory`,
                 null,
-                { name, owner, repo, path: cfg.path || '.' },
+                { name, owner, repo, path: cfg.path || '.', ref: cfg.ref },
               );
               break;
             }
@@ -306,7 +313,9 @@ const doLoadSkills = async (
                 });
                 continue;
               }
-              promises.push(loadGitHubPath(owner, repo, entry.path, flags));
+              promises.push(
+                loadGitHubPath(owner, repo, entry.path, cfg.ref, flags),
+              );
             }
             break;
           }
@@ -534,6 +543,7 @@ const getSkillContent = async ({
         owner,
         repo,
         path,
+        ...(skill.ref ? { ref: skill.ref } : {}),
       });
       if (Array.isArray(response.data)) {
         // Directory listing
