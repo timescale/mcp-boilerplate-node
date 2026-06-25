@@ -78,7 +78,7 @@
     "@types/node": "^22.19.15",
     "@typescript-eslint/typescript-estree": "8.62.0",
     "ai": "^5.0.155",
-    "eslint": "^9.39.4",
+    "eslint": "^10.5.0",
     "migrate": "^2.1.0",
     "pg": "^8.22.0",
     "typescript": "^5.9.3",
