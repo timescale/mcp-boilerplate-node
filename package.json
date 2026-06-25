@@ -51,7 +51,7 @@
     "@opentelemetry/sdk-node": "^0.213.0",
     "@opentelemetry/sdk-trace-node": "^2.6.0",
     "@opentelemetry/semantic-conventions": "^1.40.0",
-    "@toon-format/toon": "^2.1.0",
+    "@toon-format/toon": "2.3.0",
     "express": "^5.2.1",
     "gray-matter": "^4.0.3",
     "raw-body": "^3.0.2",
