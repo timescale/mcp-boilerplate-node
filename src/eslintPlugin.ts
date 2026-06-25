@@ -23,7 +23,6 @@ const noOptionalInputSchema: Rule.RuleModule = {
     docs: {
       description:
         'Disallow .optional(), .default(), and .nullish() on zod schemas in ApiFactory inputSchema',
-      category: 'Best Practices',
       recommended: true,
     },
     messages: {
@@ -122,7 +121,7 @@ function isInsideApiFactoryInputSchema(
   context: Rule.RuleContext,
   apiFactoryInputSchemas: Set<string>,
 ): boolean {
-  const sourceCode = context.sourceCode ?? context.getSourceCode?.();
+  const sourceCode = context.sourceCode;
   const ancestors = sourceCode?.getAncestors?.(node) ?? [];
 
   // Check ancestors for variables that are ApiFactory input schemas

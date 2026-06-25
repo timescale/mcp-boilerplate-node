@@ -1,11 +1,11 @@
 import { type Span, SpanStatusCode, type Tracer } from '@opentelemetry/api';
-import type {
-  GenerateTextResult,
-  ModelMessage,
-  ToolResultPart,
-  ToolSet,
-} from 'ai';
+import type { generateText, ModelMessage, ToolResultPart } from 'ai';
 import { log } from './logger.js';
+
+// The generic parameters of `GenerateTextResult` (runtime context and output)
+// are not exported by `ai`, so derive the broad result type from
+// `generateText` itself, which instantiates them with its defaults.
+type AnyGenerateTextResult = Awaited<ReturnType<typeof generateText>>;
 
 export const withSpan = async <T>(
   tracer: Tracer,
@@ -30,7 +30,12 @@ export const withSpan = async <T>(
 };
 
 const getToolContent = (content: ToolResultPart): unknown => {
-  const { type, value } = content.output;
+  const { output } = content;
+  // The `execution-denied` output variant carries no `value` field.
+  if (!('value' in output)) {
+    return output;
+  }
+  const { type, value } = output;
   if (type === 'json' && value) {
     if (typeof value === 'object' && 'structuredContent' in value) {
       return value.structuredContent;
@@ -41,7 +46,7 @@ const getToolContent = (content: ToolResultPart): unknown => {
   } else if (value) {
     return value;
   }
-  return content.output;
+  return output;
 };
 
 const annotateModelMessage = (
@@ -55,16 +60,20 @@ const annotateModelMessage = (
   };
   if (m.role === 'tool' && Array.isArray(m.content)) {
     const [c] = m.content;
-    msg.id = c.toolCallId;
-    msg.name = c.toolName;
-    msg.content = getToolContent(c);
+    // A tool message's content may also include tool-approval responses,
+    // which have no tool result to annotate.
+    if (c?.type === 'tool-result') {
+      msg.id = c.toolCallId;
+      msg.name = c.toolName;
+      msg.content = getToolContent(c);
+    }
   }
   return msg;
 };
 
 export const addAiResultToSpan = (
   span: Span,
-  aiResult: GenerateTextResult<ToolSet, unknown>,
+  aiResult: AnyGenerateTextResult,
   inputMessages: ModelMessage[],
 ): void => {
   span.setAttribute('final_result', aiResult.text);
