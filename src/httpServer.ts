@@ -164,7 +164,10 @@ export const httpServerFactory = async <
     app = ownApp;
   }
 
-  const PORT = process.env.PORT || 3001;
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
+  if (!Number.isInteger(PORT) || PORT < 0 || PORT > 65535) {
+    throw new Error(`Invalid PORT environment variable: ${process.env.PORT}`);
+  }
 
   // DNS rebinding protection: validate the Host header against an allow-list.
   // Scoped to the MCP and API mount paths so callers providing an external
@@ -272,11 +275,14 @@ export const httpServerFactory = async <
   // `app.listen` overloads differ by whether a host is provided; calling with
   // an explicit `undefined` host binds all interfaces (Node's default).
   const server = host
-    ? ownApp.listen(Number(PORT), host, onListen)
+    ? ownApp.listen(PORT, host, onListen)
     : ownApp.listen(PORT, onListen);
-  cleanupFns.push(async () => {
-    await server.close();
-  });
+  cleanupFns.push(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        server.close((error) => (error ? reject(error) : resolve()));
+      }),
+  );
 
   return {
     app,
