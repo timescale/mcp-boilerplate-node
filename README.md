@@ -53,6 +53,10 @@ Defaults to the `HOST` environment variable, or all available interfaces when un
 
 Add skills support to your MCP server by leveraging the skills submodule in `@tigerdata/mcp-boilerplate/skills`. See the [Skills README](./src/skills/README.md) for details.
 
+### Logging
+
+The exported `log` helper writes to the console (via `stderr`, to avoid interfering with the stdio MCP transport) and emits OpenTelemetry log records. The `CONSOLE_LOG_LEVEL` environment variable sets the minimum severity written to the console: `debug` (the default, writes everything), `info`, `warn`, `error`, or `none` to disable console output entirely. OpenTelemetry log records are always emitted regardless of this setting.
+
 ## Eslint Plugin
 
 This project includes a custom ESLint plugin to guard against the problematic use of optional parameters for tool inputs. Doing so leads to tools that are incompatible with certain models, such as GPT-5.

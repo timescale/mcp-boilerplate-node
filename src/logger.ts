@@ -7,6 +7,43 @@ import {
 const name = process.env.OTEL_SERVICE_NAME || 'mcp-app';
 const logger = logs.getLogger(name);
 
+// The CONSOLE_LOG_LEVEL environment variable controls the minimum severity that
+// is written to the console: 'debug', 'info', 'warn', 'error', or 'none' to
+// disable console output entirely. Defaults to 'debug' (everything). The
+// OpenTelemetry log records are always emitted regardless of this setting.
+type ConsoleLogLevel = 'debug' | 'info' | 'warn' | 'error' | 'none';
+
+const consoleLogLevelSeverity: Record<ConsoleLogLevel, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3,
+  none: 4,
+};
+
+const configuredConsoleLogLevel = (
+  process.env.CONSOLE_LOG_LEVEL || 'debug'
+).toLowerCase() as ConsoleLogLevel;
+
+if (!(configuredConsoleLogLevel in consoleLogLevelSeverity)) {
+  throw new Error(
+    `Invalid CONSOLE_LOG_LEVEL '${process.env.CONSOLE_LOG_LEVEL}'. ` +
+      `Expected one of: ${Object.keys(consoleLogLevelSeverity).join(', ')}.`,
+  );
+}
+
+const minConsoleLogSeverity =
+  consoleLogLevelSeverity[configuredConsoleLogLevel];
+
+const writeToConsole = (
+  level: Exclude<ConsoleLogLevel, 'none'>,
+  ...args: Parameters<typeof console.error>
+): void => {
+  if (consoleLogLevelSeverity[level] >= minConsoleLogSeverity) {
+    console.error(...args);
+  }
+};
+
 interface LogInterface {
   debug: (body: string, attributes?: LogAttributes) => void;
   info: (body: string, attributes?: LogAttributes) => void;
@@ -23,7 +60,7 @@ interface LogInterface {
 // and not stdout, which would interfere with the stdio MCP transport.
 export const log: LogInterface = {
   debug: (...args) => {
-    console.error(...args);
+    writeToConsole('debug', ...args);
     const [body, attributes] = args;
     logger.emit({
       severityText: 'DEBUG',
@@ -38,7 +75,7 @@ export const log: LogInterface = {
   },
 
   info: (...args) => {
-    console.error(...args);
+    writeToConsole('info', ...args);
     const [body, attributes] = args;
     logger.emit({
       severityText: 'INFO',
@@ -53,7 +90,7 @@ export const log: LogInterface = {
   },
 
   warn: (...args) => {
-    console.error(...args);
+    writeToConsole('warn', ...args);
     const [body, attributes] = args;
     logger.emit({
       severityText: 'WARN',
@@ -68,7 +105,7 @@ export const log: LogInterface = {
   },
 
   error: (...args) => {
-    console.error(...args);
+    writeToConsole('error', ...args);
     const [body, error, attributes] = args;
     logger.emit({
       severityText: 'ERROR',
