@@ -1,3 +1,4 @@
+export { Cache } from './cache.js';
 export { cliEntrypoint } from './cliEntrypoint.js';
 export { httpServerFactory } from './httpServer.js';
 export { log } from './logger.js';
