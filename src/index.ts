@@ -1,4 +1,5 @@
 export { cliEntrypoint } from './cliEntrypoint.js';
+export { Cache } from './cache.js'
 export { httpServerFactory } from './httpServer.js';
 export { log } from './logger.js';
 export type { AdditionalSetupArgs } from './mcpServer.js';
