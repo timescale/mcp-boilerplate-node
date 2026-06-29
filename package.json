@@ -28,6 +28,10 @@
     "./skills": {
       "import": "./dist/skills/index.js",
       "types": "./dist/skills/index.d.ts"
+    },
+    "./migrate": {
+      "import": "./dist/migrate.js",
+      "types": "./dist/migrate.d.ts"
     }
   },
   "files": [
