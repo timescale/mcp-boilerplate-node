@@ -245,6 +245,7 @@ const doLoadSkills = async (
             const flags = parseCollectionFlags(cfg);
             for (const entry of dirEntries) {
               if (entry.isFile()) continue;
+              if (entry.name.startsWith('.')) continue;
               if (!entry.isDirectory()) {
                 log.warn(`Skipping non-directory entry in local_collection`, {
                   path: `${cfg.path}/${entry.name}`,
@@ -306,6 +307,7 @@ const doLoadSkills = async (
             const flags = parseCollectionFlags(cfg);
             for (const entry of dirResponse.data) {
               if (entry.type === 'file') continue;
+              if (entry.name.startsWith('.')) continue;
               if (entry.type !== 'dir') {
                 log.warn(`Skipping non-directory entry in github_collection`, {
                   path: `${cfg.repo}/${entry.path}`,

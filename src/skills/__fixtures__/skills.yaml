@@ -4,3 +4,6 @@ first-skill:
 second-skill:
   type: local
   path: ./src/skills/__fixtures__/second-skill
+local-collection:
+  type: local_collection
+  path: ./src/skills/__fixtures__/collection

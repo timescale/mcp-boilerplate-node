@@ -19,7 +19,9 @@ describe('Skills API', () => {
   describe('getAvailableSkillNames', () => {
     it('returns a comma-separated list of visible skill names in alphabetical order when skills are loaded', async () => {
       const names = await getAvailableSkillNames({});
-      expect(names).toBe('first-skill, second-skill');
+      expect(names).toBe(
+        'collection-a, collection-b, first-skill, second-skill',
+      );
     });
 
     it('returns "(none)" when flags filter out every skill (e.g. enabledSkills does not match any)', async () => {
@@ -56,11 +58,13 @@ describe('Skills API', () => {
       expect(result).toContain('<available_skills>');
       expect(result).toContain('first-skill');
       expect(result).toContain('second-skill');
+      expect(result).toContain('collection-a');
+      expect(result).toContain('collection-b');
       const inner = result
         .split('<available_skills>')[1]
         .split('</available_skills>')[0];
       const lines = inner.trim().split('\n');
-      expect(lines).toHaveLength(3);
+      expect(lines).toHaveLength(5);
     });
 
     it('read valid skill: returns the content of the skill SKILL.md when name and path are valid', async () => {
@@ -131,6 +135,30 @@ describe('Skills API', () => {
           path: 'SKILL.md\x00.txt',
         }),
       ).rejects.toThrow(InvalidPathError);
+    });
+  });
+
+  describe('local_collection', () => {
+    it('loads every real skill directory inside the collection', async () => {
+      const names = await getAvailableSkillNames({});
+      expect(names).toContain('collection-a');
+      expect(names).toContain('collection-b');
+    });
+
+    it('exposes collection skill content via viewSkillContent', async () => {
+      const result = await viewSkillContent({
+        name: 'collection-a',
+        path: 'SKILL.md',
+      });
+      expect(result).toBe('Collection skill A content\n');
+    });
+
+    it('skips dot-prefixed directories (e.g. .github) even when they contain a valid SKILL.md', async () => {
+      const names = await getAvailableSkillNames({});
+      expect(names).not.toContain('dot-github-trap');
+      await expect(
+        viewSkillContent({ name: 'dot-github-trap', path: 'SKILL.md' }),
+      ).rejects.toBeInstanceOf(SkillNotFoundError);
     });
   });
 });
