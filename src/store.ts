@@ -1,29 +1,44 @@
-interface CacheProps<T> {
-  contents?: T;
-  fetch: () => Promise<T[]>;
+interface StoreProps<T> {
+  fetch: () => Promise<T>;
   ttl?: number; // amount of time in milliseconds after which cached data will be considered stale
 }
 
-export class Cache<T> {
-  private contents: Promise<T[]> | null = null;
-  private fetch: CacheProps<T>['fetch'];
+export class Store<T> {
+  private contents: Promise<T> | null = null;
+  private fetch: StoreProps<T>['fetch'];
+  private ttl?: number;
   private expirationDateTime?: number;
 
-  constructor({ fetch, ttl }: CacheProps<T>) {
+  constructor({ fetch, ttl }: StoreProps<T>) {
     this.fetch = fetch;
 
     if (ttl) {
+      this.ttl = ttl;
       this.expirationDateTime = Date.now() + ttl;
     }
   }
 
-  async get(): Promise<T[]> {
+  async get(): Promise<T> {
     if (this.expirationDateTime && Date.now() > this.expirationDateTime) {
       this.contents = null;
+      if (this.ttl) {
+        this.expirationDateTime = Date.now() + this.ttl;
+      }
     }
     this.contents ??= this.fetch();
 
     return this.contents;
+  }
+}
+
+interface ArrayStoreProps<T> {
+  fetch: () => Promise<T[]>;
+  ttl?: number;
+}
+
+export class ArrayStore<T> extends Store<T[]> {
+  constructor({ fetch, ttl }: ArrayStoreProps<T>) {
+    super({ fetch, ttl });
   }
 
   async find(predicate: (item: T) => boolean): Promise<T | null> {
