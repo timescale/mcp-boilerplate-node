@@ -29,13 +29,30 @@ const TTL = process.env.SKILLS_TTL
 
 let lastFetchCfg = 0;
 let skillCfgMap: SkillCfgMap | null = null;
+let getSkillOverride: (() => Promise<SkillCfgMap>) | null = null;
+
+// added so that the consumer can control where the skill config comes from
+// e.g. programmatically, rather than from a file
+// chose to use a setter pattern to minimize changing signatures everywhere,
+// this approach has a minimal footprint
+export const setSkillConfigReadOverride = (
+  fn: (() => Promise<SkillCfgMap>) | null,
+) => {
+  getSkillOverride = fn;
+};
+
 export const getSkillConfig = async (
   configFilePath = process.env.SKILLS_FILE || './skills.yaml',
 ): Promise<SkillCfgMap> => {
   if (skillCfgMap && Date.now() - lastFetchCfg < TTL) return skillCfgMap;
 
-  const data = await readFile(configFilePath, 'utf-8');
-  skillCfgMap = zSkillCfgMap.parse(YAML.parse(data));
+  if (getSkillOverride !== null) {
+    skillCfgMap = await getSkillOverride();
+  } else {
+    const data = await readFile(configFilePath, 'utf-8');
+    skillCfgMap = zSkillCfgMap.parse(YAML.parse(data));
+  }
+
   lastFetchCfg = Date.now();
 
   return skillCfgMap;
