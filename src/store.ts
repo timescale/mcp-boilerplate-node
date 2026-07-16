@@ -11,23 +11,28 @@ export class Store<T> {
 
   constructor({ fetch, ttl }: StoreProps<T>) {
     this.fetch = fetch;
-
-    if (ttl) {
-      this.ttl = ttl;
-      this.expirationDateTime = Date.now() + ttl;
-    }
+    this.ttl = ttl;
   }
 
   async get(): Promise<T> {
     if (this.expirationDateTime && Date.now() > this.expirationDateTime) {
       this.contents = null;
-      if (this.ttl) {
-        this.expirationDateTime = Date.now() + this.ttl;
-      }
+      this.expirationDateTime = undefined;
     }
     this.contents ??= this.fetch();
 
+    if (this.ttl && !this.expirationDateTime) {
+      this.expirationDateTime = Date.now() + this.ttl;
+    }
+
     return this.contents;
+  }
+
+  set(value: T): void {
+    this.contents = Promise.resolve(value);
+    if (this.ttl) {
+      this.expirationDateTime = Date.now() + this.ttl;
+    }
   }
 }
 
