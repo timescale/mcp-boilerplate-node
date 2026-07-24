@@ -4,6 +4,8 @@ export { log } from './logger.js';
 export type { AdditionalSetupArgs } from './mcpServer.js';
 export { registerExitHandlers } from './registerExitHandlers.js';
 export { StatusError } from './StatusError.js';
+export type { DateRangeInclude } from './schemas.js';
+export { zDateRangeInclude, zFlexibleDate } from './schemas.js';
 export { stdioServerFactory } from './stdio.js';
 export { ArrayStore, Store } from './store.js';
 export { addAiResultToSpan, withSpan } from './tracing.js';
@@ -16,5 +18,3 @@ export type {
   PromptFactory,
   ResourceFactory,
 } from './types.js';
-export { zDateRangeInclude, zFlexibleDate } from './schemas.js';
-export type { DateRangeInclude } from './schemas.js';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { toJsonSchemaCompat } from '@modelcontextprotocol/sdk/server/zod-json-schema-compat';
+import { toJsonSchemaCompat } from '@modelcontextprotocol/sdk/server/zod-json-schema-compat.js';
 import { z } from 'zod';
 import { zDateRangeInclude } from './schemas.js';
 
