@@ -16,3 +16,5 @@ export type {
   PromptFactory,
   ResourceFactory,
 } from './types.js';
+export { zDateRangeInclude, zFlexibleDate } from './schemas.js';
+export type { DateRangeInclude } from './schemas.js';
