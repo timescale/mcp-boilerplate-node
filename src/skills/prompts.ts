@@ -1,7 +1,12 @@
 import type { Octokit } from '@octokit/rest';
 import type { PromptFactory } from '../types.js';
 import type { ServerContextWithOctokit } from './types.js';
-import { loadSkills, parseSkillsFlags, viewSkillContent } from './utils.js';
+import {
+  loadSkills,
+  parseSkillsFlags,
+  skillVisible,
+  viewSkillContent,
+} from './utils.js';
 
 interface Options {
   octokit?: Octokit;
@@ -30,6 +35,10 @@ export const createSkillsPromptFactories = async (
     PromptFactory<ServerContextWithOctokit, Record<string, never>>
   >(([name, skillData]) => ({ octokit }, { query }) => ({
     name,
+    // Skills hidden via enabled_skills/disabled_skills must not be advertised
+    // by prompts/list — prompts/get already refuses them via viewSkillContent,
+    // and listing them would offer clients a prompt they can never load.
+    disabled: !skillVisible(name, parseSkillsFlags(query)),
     config: {
       // Using the dash-separated name as the title to work around a problem in Claude Code
       // See https://github.com/anthropics/claude-code/issues/7464
