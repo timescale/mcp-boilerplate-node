@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import type { Server } from 'node:http';
 import { hostHeaderValidation } from '@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js';
-import bodyParser from 'body-parser';
 import express, {
   type NextFunction,
   type Request,
@@ -233,8 +232,10 @@ export const httpServerFactory = async <
     process.env.MCP_USE_ANONYMIZED_TELEMETRY = 'false';
     import('@mcp-use/inspector')
       .then(({ mountInspector }) => {
-        expressApp.use(bodyParser.json());
         mountInspector(expressApp, {
+          // The default basePath is `/mcp`, which serves the UI at
+          // `/mcp/inspector`. An empty basePath keeps the UI at `/inspector`.
+          basePath: '',
           autoConnectUrl:
             process.env.MCP_PUBLIC_URL ?? `http://localhost:${PORT}/mcp`,
         });
