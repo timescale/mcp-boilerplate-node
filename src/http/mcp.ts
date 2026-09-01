@@ -10,6 +10,7 @@ import {
   trace,
 } from '@opentelemetry/api';
 import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventions';
+import escapeHtml from 'escape-html';
 import { type Request, type Response, Router } from 'express';
 import getRawBody from 'raw-body';
 import { log } from '../logger.js';
@@ -21,6 +22,11 @@ import type {
 
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.router.mcp` : 'router.mcp');
+
+/** Take the first value, because a header can repeat. */
+const firstHeaderValue = (
+  value: string | string[] | undefined,
+): string | undefined => (Array.isArray(value) ? value[0] : value);
 
 export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   context: Context,
@@ -250,11 +256,15 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   // Handle GET requests for server-to-client notifications via SSE
   router.get('/', (req, res) => {
     if (req.accepts('html')) {
-      const proto = req.headers['x-forwarded-proto'] || req.protocol;
-      const host = req.headers['x-forwarded-host'] || req.get('host');
+      // The client controls these values (directly, or through a proxy that
+      // forwards them), so they must be escaped before they go into the HTML.
+      const proto =
+        firstHeaderValue(req.headers['x-forwarded-proto']) || req.protocol;
+      const host =
+        firstHeaderValue(req.headers['x-forwarded-host']) || req.get('host');
       const path =
-        req.headers['x-original-request-uri'] ||
-        req.headers['x-original-uri'] ||
+        firstHeaderValue(req.headers['x-original-request-uri']) ||
+        firstHeaderValue(req.headers['x-original-uri']) ||
         req.originalUrl;
       const fullUrl = `${proto}://${host}${path}`;
       res.send(`<!DOCTYPE html>
@@ -263,19 +273,19 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
 </head>
 <body>
-  <h1>${name}</h1>
+  <h1>${escapeHtml(name)}</h1>
   <h2>Model Context Protocol (MCP) Server</h2>
   <p>This endpoint is used for MCP communication. Please use an MCP-compatible client to interact with this server.</p>
   ${
     inspector
       ? `
   <h3>Inspector</h3>
-  <p>You can use the <a href="/inspector?server=${encodeURIComponent(fullUrl)}">MCP Inspector</a> for testing purposes.</p>`
+  <p>You can use the <a href="/inspector?server=${escapeHtml(encodeURIComponent(fullUrl))}">MCP Inspector</a> for testing purposes.</p>`
       : ''
   }
   <h3>Claude Code</h3>
   <p>To connect to this MCP server using Claude Code, run the following command in your terminal:</p>
-  <pre><code>claude mcp add --transport http ${name || req.get('host')} ${fullUrl}</code></pre>
+  <pre><code>claude mcp add --transport http ${escapeHtml(name || req.get('host'))} ${escapeHtml(fullUrl)}</code></pre>
 </body>
 </html>`);
       return;
