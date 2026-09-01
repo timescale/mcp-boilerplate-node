@@ -59,14 +59,14 @@ export const instrument = (
   }
   if (process.env.LOGFIRE_LOGS_ENDPOINT) {
     logRecordProcessors.push(
-      new BatchLogRecordProcessor(
-        new OTLPLogExporter({
+      new BatchLogRecordProcessor({
+        exporter: new OTLPLogExporter({
           url: process.env.LOGFIRE_LOGS_ENDPOINT,
           headers: process.env.LOGFIRE_TOKEN
             ? { Authorization: `Bearer ${process.env.LOGFIRE_TOKEN}` }
             : {},
         }),
-      ),
+      }),
     );
   }
 

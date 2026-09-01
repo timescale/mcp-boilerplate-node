@@ -47,20 +47,20 @@
     "release": "bump-release"
   },
   "dependencies": {
-    "@mcp-use/inspector": "^10.0.1",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@mcp-use/inspector": "^20.3.3",
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@opentelemetry/api": "^1.9.1",
-    "@opentelemetry/auto-instrumentations-node": "^0.77.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.219.0",
-    "@opentelemetry/instrumentation-http": "^0.219.0",
-    "@opentelemetry/sdk-metrics": "^2.8.0",
-    "@opentelemetry/sdk-node": "^0.219.0",
-    "@opentelemetry/sdk-trace-node": "^2.8.0",
-    "@opentelemetry/semantic-conventions": "^1.41.1",
-    "@toon-format/toon": "^2.3.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.80.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.222.0",
+    "@opentelemetry/instrumentation-http": "^0.222.0",
+    "@opentelemetry/sdk-metrics": "^2.11.0",
+    "@opentelemetry/sdk-node": "^0.222.0",
+    "@opentelemetry/sdk-trace-node": "^2.11.0",
+    "@opentelemetry/semantic-conventions": "^1.43.0",
+    "@toon-format/toon": "^4.1.1",
     "express": "^5.2.1",
     "gray-matter": "^4.0.3",
-    "raw-body": "^3.0.2",
+    "raw-body": "^4.0.0",
     "yaml": "^2.9.0"
   },
   "peerDependencies": {
@@ -77,19 +77,19 @@
     }
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.1",
+    "@biomejs/biome": "^2.5.11",
     "@octokit/rest": "^22.0.1",
     "@tigerdata/bump-release": "^0.1.2",
-    "@types/bun": "^1.3.14",
+    "@types/bun": "^1.4.0",
     "@types/express": "^5.0.6",
-    "@types/node": "^24.13.2",
-    "@typescript-eslint/typescript-estree": "^8.62.0",
-    "ai": "^7.0.2",
-    "eslint": "^10.5.0",
+    "@types/node": "^24.13.3",
+    "@typescript-eslint/typescript-estree": "^8.69.0",
+    "ai": "^7.0.87",
+    "eslint": "^10.9.1",
     "migrate": "^2.1.0",
-    "pg": "^8.22.0",
+    "pg": "^8.23.0",
     "typescript": "^6.0.3",
-    "zod": "^4.3.6"
+    "zod": "^4.5.4"
   },
   "publishConfig": {
     "access": "public"
