@@ -80,6 +80,9 @@ describe('mcp docs page', () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).not.toContain('<script>alert(1)</script>');
+    expect(body).toContain(
+      '/mcp&quot;&gt;&lt;script&gt;alert(1)&lt;/script&gt;',
+    );
   });
 
   it('escapes the forwarded proto', async () => {
@@ -92,5 +95,6 @@ describe('mcp docs page', () => {
     expect(res.status).toBe(200);
     const body = await res.text();
     expect(body).not.toContain('<script>alert(1)</script>');
+    expect(body).toContain('&lt;script&gt;alert(1)&lt;/script&gt;://');
   });
 });
