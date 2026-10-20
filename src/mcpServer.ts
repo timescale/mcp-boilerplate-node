@@ -213,28 +213,33 @@ export const mcpServerFactory = async <
       ) {
         continue;
       }
-      server.registerPrompt(prompt.name, prompt.config, async (args) =>
-        tracer.startActiveSpan(
-          `mcp.prompt.${prompt.name}`,
-          async (span): Promise<GetPromptResult> => {
-            span.setAttribute('mcp.prompt.args', JSON.stringify(args));
-            try {
-              const result = await prompt.fn(args as Record<string, unknown>);
-              span.setStatus({ code: SpanStatusCode.OK });
-              return result;
-            } catch (error) {
-              log.error('Error invoking prompt:', error as Error);
-              span.recordException(error as Error);
-              span.setStatus({
-                code: SpanStatusCode.ERROR,
-                message: (error as Error).message,
-              });
-              throw error;
-            } finally {
-              span.end();
-            }
-          },
-        ),
+      const { inputSchema, ...promptConfig } = prompt.config;
+      server.registerPrompt(
+        prompt.name,
+        // The SDK reads the prompt arguments from `argsSchema`.
+        { ...promptConfig, argsSchema: z.object(inputSchema) },
+        async (args) =>
+          tracer.startActiveSpan(
+            `mcp.prompt.${prompt.name}`,
+            async (span): Promise<GetPromptResult> => {
+              span.setAttribute('mcp.prompt.args', JSON.stringify(args));
+              try {
+                const result = await prompt.fn(args as Record<string, unknown>);
+                span.setStatus({ code: SpanStatusCode.OK });
+                return result;
+              } catch (error) {
+                log.error('Error invoking prompt:', error as Error);
+                span.recordException(error as Error);
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: (error as Error).message,
+                });
+                throw error;
+              } finally {
+                span.end();
+              }
+            },
+          ),
       );
     }
   }

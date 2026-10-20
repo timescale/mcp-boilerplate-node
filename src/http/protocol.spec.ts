@@ -40,6 +40,23 @@ const greetingPromptFactory: BasePromptFactory<
   }),
 });
 
+const shoutPromptFactory: BasePromptFactory<Record<string, unknown>> = () => ({
+  name: 'shout',
+  config: {
+    title: 'Shout',
+    description: 'Repeat the text in capital letters',
+    inputSchema: { text: z.string().describe('The text to repeat') },
+  },
+  fn: async ({ text }) => ({
+    messages: [
+      {
+        role: 'user',
+        content: { type: 'text', text: String(text).toUpperCase() },
+      },
+    ],
+  }),
+});
+
 const noteResourceFactory: ResourceFactory<Record<string, unknown>> = () => ({
   type: 'static',
   name: 'note',
@@ -61,7 +78,7 @@ const startServer = async (): Promise<StartedServer> => {
     name: 'test-server',
     context: {},
     apiFactories: [echoFactory],
-    promptFactories: [greetingPromptFactory],
+    promptFactories: [greetingPromptFactory, shoutPromptFactory],
     resourceFactories: [noteResourceFactory],
     app,
   });
@@ -141,6 +158,19 @@ describe('MCP protocol versions over HTTP', () => {
       expect(prompt.messages[0]?.content).toEqual({
         type: 'text',
         text: 'Hello',
+      });
+
+      const { prompts } = await client.listPrompts();
+      expect(prompts.find((p) => p.name === 'shout')?.arguments).toEqual([
+        { name: 'text', description: 'The text to repeat', required: true },
+      ]);
+      const shout = await client.getPrompt({
+        name: 'shout',
+        arguments: { text: 'hello' },
+      });
+      expect(shout.messages[0]?.content).toEqual({
+        type: 'text',
+        text: 'HELLO',
       });
 
       const resource = await client.readResource({ uri: 'test://note' });
