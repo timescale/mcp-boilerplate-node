@@ -14,13 +14,14 @@ See [tiger-skills-mcp-server](https://github.com/tigerdata/tiger-skills-mcp-serv
 
 The servers from `httpServerFactory` and `stdioServerFactory` serve the [2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28) MCP protocol and the 2025 protocol versions (up to `2025-11-25`) on the same endpoint. The client selects the version.
 
-The 2026-07-28 protocol has no sessions: each HTTP request gets a new server instance. The `stateful` option of `httpServerFactory` (default `true`) applies only to 2025 clients. When `stateful` is `false`, 2025 clients are also served without sessions.
+The HTTP server does not use sessions (the 2026-07-28 protocol has none, and they are optional in the 2025 protocol). Each HTTP request gets a new server instance. Thus, the server cannot send requests to a 2025 client (for example, elicitation or sampling), and cannot send it notifications outside of a request (for example, `list_changed`).
 
 ### Upgrading from v1 of the MCP SDK
 
 This package uses v2 of the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) (`@modelcontextprotocol/server`). If your server uses SDK types or APIs directly, see the [SDK migration guide](https://ts.sdk.modelcontextprotocol.io/v2/migration/upgrade-to-v2). In particular:
 
 - `zod` must be `^4.2.0`.
+- `httpServerFactory` no longer has the `stateful` option. Remove `stateful: false` from your options.
 - `additionalSetup` receives a v2 `McpServer`.
 - Resource callbacks (`read`, `list`) receive a v2 `ServerContext` (`ctx`) instead of the v1 `extra` object. For example, `extra.signal` is now `ctx.mcpReq.signal`.
 

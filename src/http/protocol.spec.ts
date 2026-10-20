@@ -55,7 +55,7 @@ interface StartedServer {
   cleanup: () => Promise<void>;
 }
 
-const startServer = async (stateful: boolean): Promise<StartedServer> => {
+const startServer = async (): Promise<StartedServer> => {
   const app = express();
   await httpServerFactory({
     name: 'test-server',
@@ -63,7 +63,6 @@ const startServer = async (stateful: boolean): Promise<StartedServer> => {
     apiFactories: [echoFactory],
     promptFactories: [greetingPromptFactory],
     resourceFactories: [noteResourceFactory],
-    stateful,
     app,
   });
   const server = app.listen(0);
@@ -107,28 +106,22 @@ describe('MCP protocol versions over HTTP', () => {
     }
   });
 
-  const cases: { stateful: boolean; era: Era; protocolVersion: string }[] = [
-    { stateful: true, era: 'modern', protocolVersion: '2026-07-28' },
-    { stateful: true, era: 'legacy', protocolVersion: '2025-11-25' },
-    { stateful: false, era: 'modern', protocolVersion: '2026-07-28' },
-    { stateful: false, era: 'legacy', protocolVersion: '2025-11-25' },
+  const cases: { era: Era; protocolVersion: string }[] = [
+    { era: 'modern', protocolVersion: '2026-07-28' },
+    { era: 'legacy', protocolVersion: '2025-11-25' },
   ];
 
-  for (const { stateful, era, protocolVersion } of cases) {
-    it(`serves ${protocolVersion} when stateful is ${stateful}`, async () => {
-      const server = await startServer(stateful);
+  for (const { era, protocolVersion } of cases) {
+    it(`serves ${protocolVersion}`, async () => {
+      const server = await startServer();
       cleanups.push(server.cleanup);
       const { client, transport } = await connect(server.url, era);
       cleanups.push(() => client.close());
 
       expect(client.getProtocolEra()).toBe(era);
       expect(client.getNegotiatedProtocolVersion()).toBe(protocolVersion);
-      // Only the 2025 protocol has sessions, and only in stateful mode.
-      if (stateful && era === 'legacy') {
-        expect(transport.sessionId).toBeString();
-      } else {
-        expect(transport.sessionId).toBeUndefined();
-      }
+      // The server does not create sessions.
+      expect(transport.sessionId).toBeUndefined();
 
       const { tools } = await client.listTools();
       expect(tools.map((tool) => tool.name)).toEqual(['echo']);
@@ -154,7 +147,7 @@ describe('MCP protocol versions over HTTP', () => {
 
   for (const era of ['modern', 'legacy'] as const) {
     it(`applies query feature flags to ${era} requests`, async () => {
-      const server = await startServer(true);
+      const server = await startServer();
       cleanups.push(server.cleanup);
       const { client } = await connect(
         `${server.url}?disabled_tools=echo`,

@@ -29,7 +29,6 @@ interface HttpServerOptions<Context extends Record<string, unknown>> {
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
-  stateful?: boolean;
   instructions?: string;
   /**
    * When provided, mount routers on this app/router instead of creating a new
@@ -140,7 +139,6 @@ export const httpServerFactory = async <
   resourceFactories,
   additionalSetup,
   cleanupFn,
-  stateful = true,
   instructions,
   app: externalApp,
   mcpPath = '/mcp',
@@ -203,7 +201,7 @@ export const httpServerFactory = async <
         featureFlags,
         instructions,
       }),
-    { name, stateful, inspector },
+    { name, inspector },
   );
   cleanupFns.push(mcpCleanup);
   if (hostValidation) {
