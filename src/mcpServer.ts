@@ -269,10 +269,6 @@ export const mcpServerFactory = async <
                   span,
                 ): Promise<ReadResourceResult | InputRequiredResult> => {
                   span.setAttribute('mcp.resource.uri', uri.toString());
-                  span.setAttribute(
-                    'mcp.resource.extra',
-                    JSON.stringify(extra),
-                  );
                   try {
                     const result = await resource.read(uri, extra);
                     span.setStatus({ code: SpanStatusCode.OK });
@@ -343,10 +339,6 @@ export const mcpServerFactory = async <
                   span.setAttribute(
                     'mcp.resource.variables',
                     JSON.stringify(variables),
-                  );
-                  span.setAttribute(
-                    'mcp.resource.extra',
-                    JSON.stringify(extra),
                   );
                   try {
                     const result = await resource.read(uri, variables, extra);
