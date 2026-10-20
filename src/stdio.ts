@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import { type AdditionalSetupArgs, mcpServerFactory } from './mcpServer.js';
 import { registerExitHandlers } from './registerExitHandlers.js';
 import type {
@@ -33,24 +33,30 @@ export const stdioServerFactory = async <
 }): Promise<void> => {
   try {
     console.error('Starting default (STDIO) server...');
-    const transport = new StdioServerTransport();
-    const { server } = await mcpServerFactory({
-      name,
-      version,
-      context,
-      apiFactories,
-      promptFactories,
-      resourceFactories,
-      additionalSetup,
-      instructions,
-    });
-
-    await server.connect(transport);
+    // serveStdio selects the protocol era (2025 or 2026-07-28) from the
+    // opening exchange. It can call the factory more than once (for example,
+    // for a `server/discover` probe).
+    const handle = serveStdio(
+      async () =>
+        (
+          await mcpServerFactory({
+            name,
+            version,
+            context,
+            apiFactories,
+            promptFactories,
+            resourceFactories,
+            additionalSetup,
+            instructions,
+          })
+        ).server,
+      { onerror: (error) => console.error('Server error:', error) },
+    );
 
     // Cleanup on exit
     registerExitHandlers([
       async (): Promise<void> => {
-        await server.close();
+        await handle.close();
       },
       async (): Promise<void> => {
         await cleanupFn?.();

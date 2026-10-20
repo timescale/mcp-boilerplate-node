@@ -1,18 +1,14 @@
 import {
+  type CallToolResult,
+  type GetPromptResult,
+  type InputRequiredResult,
+  type ListResourcesResult,
   McpServer,
+  type ReadResourceResult,
   ResourceTemplate,
-  type ToolCallback,
-} from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type {
-  CallToolResult,
-  GetPromptResult,
-  ListResourcesResult,
-  ReadResourceResult,
-  ServerCapabilities,
-  ServerNotification,
-  ServerRequest,
-} from '@modelcontextprotocol/sdk/types.js';
+  type ServerCapabilities,
+  type ServerContext,
+} from '@modelcontextprotocol/server';
 import {
   context as otelContext,
   propagation,
@@ -20,6 +16,7 @@ import {
   SpanStatusCode,
   trace,
 } from '@opentelemetry/api';
+import { z } from 'zod';
 import { log } from './logger.js';
 import type {
   BaseApiFactory,
@@ -128,6 +125,8 @@ export const mcpServerFactory = async <
         tool.name,
         {
           ...tool.config,
+          inputSchema: z.object(tool.config.inputSchema),
+          outputSchema: z.object(tool.config.outputSchema),
           annotations: {
             ...tool.config.annotations,
             // Some clients (e.g. claude code) do not yet support the title field
@@ -137,16 +136,17 @@ export const mcpServerFactory = async <
             title: tool.config.title,
           },
         },
-        (async (
+        async (
           args: Record<string, unknown>,
-          extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
+          ctx: ServerContext,
         ): Promise<CallToolResult> => {
           let traceContext = otelContext.active();
-          if (extra?._meta?.traceparent) {
+          const meta = ctx.mcpReq._meta;
+          if (meta?.traceparent) {
             // Some MCP clients (e.g. pydantic) pass the parent trace context
             traceContext = propagation.extract(traceContext, {
-              traceparent: extra._meta.traceparent,
-              tracestate: extra._meta.tracestate,
+              traceparent: meta.traceparent,
+              tracestate: meta.tracestate,
             });
           }
           return tracer.startActiveSpan(
@@ -190,7 +190,7 @@ export const mcpServerFactory = async <
               }
             },
           );
-        }) as ToolCallback<typeof tool.config.inputSchema>,
+        },
       );
     }
   }
@@ -254,7 +254,9 @@ export const mcpServerFactory = async <
             async (uri: URL, extra) =>
               tracer.startActiveSpan(
                 `mcp.resource.static.${resource.name}`,
-                async (span): Promise<ReadResourceResult> => {
+                async (
+                  span,
+                ): Promise<ReadResourceResult | InputRequiredResult> => {
                   span.setAttribute('mcp.resource.uri', uri.toString());
                   span.setAttribute(
                     'mcp.resource.extra',
@@ -323,7 +325,9 @@ export const mcpServerFactory = async <
             async (uri: URL, variables, extra) =>
               tracer.startActiveSpan(
                 `mcp.resource.templated.${resource.name}`,
-                async (span): Promise<ReadResourceResult> => {
+                async (
+                  span,
+                ): Promise<ReadResourceResult | InputRequiredResult> => {
                   span.setAttribute('mcp.resource.uri', uri.toString());
                   span.setAttribute(
                     'mcp.resource.variables',

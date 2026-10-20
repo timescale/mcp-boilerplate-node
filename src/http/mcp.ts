@@ -1,7 +1,16 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import {
+  NodeStreamableHTTPServerTransport,
+  toNodeHandler,
+  toWebRequest,
+} from '@modelcontextprotocol/node';
+import {
+  createMcpHandler,
+  isInitializeRequest,
+  isLegacyRequest,
+  type McpServer,
+} from '@modelcontextprotocol/server';
 import {
   context as otelContext,
   propagation,
@@ -22,6 +31,16 @@ import type {
 
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.router.mcp` : 'router.mcp');
+
+/**
+ * Read the JSON body of a POST request. Use the body that a body parser
+ * already read, when there is one.
+ */
+const readJsonBody = async (req: Request): Promise<unknown> => {
+  if (req.body !== undefined) return req.body;
+  const text = await getRawBody(req, { limit: '4mb', encoding: 'utf-8' });
+  return JSON.parse(text);
+};
 
 /** Take the first value, because a header can repeat. */
 const firstHeaderValue = (
@@ -46,9 +65,9 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
 ): RouterFactoryResult => {
   const router = Router();
 
-  const transports: Map<string, StreamableHTTPServerTransport> = new Map<
+  const transports: Map<string, NodeStreamableHTTPServerTransport> = new Map<
     string,
-    StreamableHTTPServerTransport
+    NodeStreamableHTTPServerTransport
   >();
 
   const sessionFeatureFlags: Map<string, McpFeatureFlags> = new Map<
@@ -78,31 +97,38 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     query: req.query,
   });
 
-  const handleStatelessRequest = async (
-    req: Request,
-    res: Response,
-  ): Promise<void> => {
-    const featureFlags = parseFeatureFlags(req);
-    const { server } = await createServer(context, featureFlags);
-    const transport: StreamableHTTPServerTransport =
-      new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-      });
-    res.on('close', () => {
-      transport.close();
-      server.close();
-    });
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-  };
+  // createMcpHandler calls the server factory itself, so the feature flags
+  // of the current HTTP request go to the factory through this storage.
+  const requestFeatureFlags = new AsyncLocalStorage<McpFeatureFlags>();
+
+  // This handler creates one server for each request. It serves the
+  // 2026-07-28 protocol. In stateless mode, it also serves the 2025 protocol.
+  // In stateful mode, the session transports below serve the 2025 protocol.
+  const perRequestHandler = createMcpHandler(
+    async () => {
+      const featureFlags = requestFeatureFlags.getStore();
+      if (!featureFlags) {
+        throw new Error('MCP server factory called outside of a request');
+      }
+      const { server } = await createServer(context, featureFlags);
+      return server;
+    },
+    {
+      legacy: stateful ? 'reject' : 'stateless',
+      onerror: (error) => log.error('Error handling MCP request:', error),
+    },
+  );
+  const handlePerRequest = toNodeHandler(perRequestHandler, {
+    onerror: (error) => log.error('Error handling MCP request:', error),
+  });
 
   const handleStatefulRequest = async (
     req: Request,
     res: Response,
+    body: unknown,
   ): Promise<void> => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    let transport: StreamableHTTPServerTransport;
-    let body = req.body;
+    let transport: NodeStreamableHTTPServerTransport;
 
     if (sessionId) {
       const t = transports.get(sessionId);
@@ -119,13 +145,6 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
       }
       transport = t;
     } else {
-      if (!body) {
-        body = await getRawBody(req, {
-          limit: '4mb',
-          encoding: 'utf-8',
-        });
-        body = JSON.parse(body.toString());
-      }
       if (!isInitializeRequest(body)) {
         res.status(400).json({
           jsonrpc: '2.0',
@@ -140,7 +159,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
 
       const featureFlags = parseFeatureFlags(req);
 
-      transport = new StreamableHTTPServerTransport({
+      transport = new NodeStreamableHTTPServerTransport({
         sessionIdGenerator: (): string => randomUUID(),
         onsessioninitialized: (sessionId: string): void => {
           log.info(`Session initialized with ID: ${sessionId}`);
@@ -179,9 +198,33 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
       traceContext,
       async (span) => {
         try {
-          await (stateful
-            ? handleStatefulRequest(req, res)
-            : handleStatelessRequest(req, res));
+          let body: unknown;
+          try {
+            body = await readJsonBody(req);
+          } catch (error) {
+            const tooLarge = (error as { status?: number }).status === 413;
+            if (!tooLarge && !(error instanceof SyntaxError)) throw error;
+            res.status(tooLarge ? 413 : 400).json({
+              jsonrpc: '2.0',
+              error: {
+                code: tooLarge ? -32600 : -32700,
+                message: tooLarge ? 'Request body too large' : 'Parse error',
+              },
+              id: null,
+            });
+            span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
+            return;
+          }
+          if (
+            stateful &&
+            (await isLegacyRequest(await toWebRequest(req, body), body))
+          ) {
+            await handleStatefulRequest(req, res, body);
+          } else {
+            await requestFeatureFlags.run(parseFeatureFlags(req), () =>
+              handlePerRequest(req, res, body),
+            );
+          }
           span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
           span.setStatus({ code: SpanStatusCode.OK });
         } catch (error) {
@@ -297,6 +340,7 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   router.delete('/', handleSessionRequest);
 
   const cleanup = async (): Promise<void> => {
+    await perRequestHandler.close();
     // Close all active transports to properly clean up resources
     for (const sessionId in transports) {
       try {
