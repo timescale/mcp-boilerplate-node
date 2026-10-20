@@ -122,6 +122,11 @@ describe('MCP protocol versions over HTTP', () => {
       expect(client.getNegotiatedProtocolVersion()).toBe(protocolVersion);
       // The server does not create sessions.
       expect(transport.sessionId).toBeUndefined();
+      // The server never sends list_changed notifications.
+      const capabilities = client.getServerCapabilities();
+      expect(capabilities?.tools?.listChanged).toBe(false);
+      expect(capabilities?.prompts?.listChanged).toBe(false);
+      expect(capabilities?.resources?.listChanged).toBe(false);
 
       const { tools } = await client.listTools();
       expect(tools.map((tool) => tool.name)).toEqual(['echo']);

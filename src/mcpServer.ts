@@ -97,11 +97,17 @@ export const mcpServerFactory = async <
       version,
     },
     {
+      // The server never sends list_changed notifications, so it must not
+      // advertise them. If `listChanged` is not set, the SDK sets it to true.
       capabilities: {
-        ...(enableTools && apiFactories.length ? { tools: {} } : null),
-        ...(enablePrompts && promptFactories.length ? { prompts: {} } : null),
+        ...(enableTools && apiFactories.length
+          ? { tools: { listChanged: false } }
+          : null),
+        ...(enablePrompts && promptFactories.length
+          ? { prompts: { listChanged: false } }
+          : null),
         ...(enableResources && resourceFactories.length
-          ? { resources: {} }
+          ? { resources: { listChanged: false } }
           : null),
         ...additionalCapabilities,
       },
