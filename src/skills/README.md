@@ -51,7 +51,6 @@ skill-name/
 ##### Scripts (`scripts/`)
 
 Executable code (Python/Bash/etc.) for tasks that require deterministic reliability or are repeatedly rewritten.
-
 - **When to include**: When the same code is being rewritten repeatedly or deterministic reliability is needed
 - **Example**: `scripts/rotate_pdf.py` for PDF rotation tasks
 - **Benefits**: Token efficient, deterministic, may be executed without loading into context
@@ -60,7 +59,6 @@ Executable code (Python/Bash/etc.) for tasks that require deterministic reliabil
 ##### References (`references/`)
 
 Documentation and reference material intended to be loaded as needed into context to inform the agent's process and thinking.
-
 - **When to include**: For documentation that the agent should reference while working
 - **Examples**: `references/finance.md` for financial schemas, `references/mnda.md` for company NDA template, `references/policies.md` for company policies, `references/api_docs.md` for API specifications
 - **Use cases**: Database schemas, API documentation, domain knowledge, company policies, detailed workflow guides
@@ -71,7 +69,6 @@ Documentation and reference material intended to be loaded as needed into contex
 ##### Assets (`assets/`)
 
 Files not intended to be loaded into context, but rather used within the output the agent produces.
-
 - **When to include**: When the skill needs files that will be used in the final output
 - **Examples**: `assets/logo.png` for brand assets, `assets/slides.pptx` for PowerPoint templates, `assets/frontend-template/` for HTML/React boilerplate, `assets/font.ttf` for typography
 - **Use cases**: Templates, images, icons, boilerplate code, fonts, sample documents that get copied or modified
@@ -80,7 +77,6 @@ Files not intended to be loaded into context, but rather used within the output 
 ### Progressive Disclosure Design Principle
 
 Skills use a three-level loading system to manage context efficiently:
-
 1. **Metadata (name + description)** - Always in context (~100 words)
 2. **SKILL.md body** - When skill triggers (<5k words)
 3. **Bundled resources** - As needed by the agent (Unlimited\*)
@@ -102,9 +98,7 @@ import { httpServerFactory } from '@tigerdata/mcp-boilerplate';
 import { createViewSkillToolFactory } from '@tigerdata/mcp-boilerplate/skills';
 
 await httpServerFactory({
-  apiFactories: [
-    createViewSkillToolFactory(),
-  ],
+  apiFactories: [createViewSkillToolFactory()],
 });
 ```
 
@@ -116,9 +110,7 @@ Use `createSkillsResourceFactory` to register with `httpServerFactory` as a dyna
 import { httpServerFactory } from '@tigerdata/mcp-boilerplate';
 import { createSkillsResourceFactory } from '@tigerdata/mcp-boilerplate/skills';
 await httpServerFactory({
-  resourceFactories: [
-    createSkillsResourceFactory(),
-  ],
+  resourceFactories: [createSkillsResourceFactory()],
 });
 ```
 
@@ -171,7 +163,6 @@ Skill names must be unique across all configured skills. Any duplicates will be 
 ### Connection string parameters
 
 Individual clients can control the set of skills that are enabled, as well as the protocol(s) used, via parameters in the connection string.
-
 - `enabled_skills`: Comma-separated list of skill keys to enable. If not provided, all configured skills are enabled.
 - `disabled_skills`: Comma-separated list of skill keys to disable. If not provided, no skills are disabled.
 - `tools=0`: Disable all tools (for resource-only integration).

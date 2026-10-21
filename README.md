@@ -19,7 +19,6 @@ The HTTP server does not use sessions (the 2026-07-28 protocol has none, and the
 ### Upgrading from v1 of the MCP SDK
 
 This package uses v2 of the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) (`@modelcontextprotocol/server`). If your server uses SDK types or APIs directly, see the [SDK migration guide](https://ts.sdk.modelcontextprotocol.io/v2/migration/upgrade-to-v2). In particular:
-
 - `zod` must be `^4.2.0`.
 - `httpServerFactory` no longer has the `stateful` option. Remove `stateful: false` from your options.
 - `additionalSetup` receives a v2 `McpServer`.
