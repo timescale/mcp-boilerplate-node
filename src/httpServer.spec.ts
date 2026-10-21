@@ -97,7 +97,7 @@ describe('httpServerFactory DNS rebinding protection', () => {
 
     const res = await postMcp(port, `127.0.0.1:${port}`);
     // Not a 403 — the request passes Host validation and reaches the MCP
-    // handler (which then negotiates the session normally).
+    // handler.
     expect(res.status).not.toBe(403);
   });
 

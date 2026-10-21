@@ -1,7 +1,6 @@
-import { randomUUID } from 'node:crypto';
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
-import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { toNodeHandler } from '@modelcontextprotocol/node';
+import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import {
   context as otelContext,
   propagation,
@@ -12,7 +11,6 @@ import {
 import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventions';
 import escapeHtml from 'escape-html';
 import { type Request, type Response, Router } from 'express';
-import getRawBody from 'raw-body';
 import { log } from '../logger.js';
 import type {
   McpFeatureFlags,
@@ -36,25 +34,13 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
   ) => Promise<{ server: McpServer }>,
   {
     name,
-    stateful = true,
     inspector = false,
   }: {
     name?: string;
-    stateful?: boolean;
     inspector?: boolean;
   } = {},
 ): RouterFactoryResult => {
   const router = Router();
-
-  const transports: Map<string, StreamableHTTPServerTransport> = new Map<
-    string,
-    StreamableHTTPServerTransport
-  >();
-
-  const sessionFeatureFlags: Map<string, McpFeatureFlags> = new Map<
-    string,
-    McpFeatureFlags
-  >();
 
   const toSet = (flag: ParsedQs[string]): Set<string> | null =>
     flag
@@ -78,92 +64,28 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     query: req.query,
   });
 
-  const handleStatelessRequest = async (
-    req: Request,
-    res: Response,
-  ): Promise<void> => {
-    const featureFlags = parseFeatureFlags(req);
-    const { server } = await createServer(context, featureFlags);
-    const transport: StreamableHTTPServerTransport =
-      new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined,
-      });
-    res.on('close', () => {
-      transport.close();
-      server.close();
-    });
-    await server.connect(transport);
-    await transport.handleRequest(req, res, req.body);
-  };
+  // createMcpHandler calls the server factory itself, so the feature flags
+  // of the current HTTP request go to the factory through this storage.
+  const requestFeatureFlags = new AsyncLocalStorage<McpFeatureFlags>();
 
-  const handleStatefulRequest = async (
-    req: Request,
-    res: Response,
-  ): Promise<void> => {
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    let transport: StreamableHTTPServerTransport;
-    let body = req.body;
-
-    if (sessionId) {
-      const t = transports.get(sessionId);
-      if (!t) {
-        res.status(404).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Not Found: No session found for that ID',
-          },
-          id: sessionId,
-        });
-        return;
+  // This handler creates one server for each request. It serves the
+  // 2026-07-28 protocol, and the 2025 protocol without sessions.
+  const perRequestHandler = createMcpHandler(
+    async () => {
+      const featureFlags = requestFeatureFlags.getStore();
+      if (!featureFlags) {
+        throw new Error('MCP server factory called outside of a request');
       }
-      transport = t;
-    } else {
-      if (!body) {
-        body = await getRawBody(req, {
-          limit: '4mb',
-          encoding: 'utf-8',
-        });
-        body = JSON.parse(body.toString());
-      }
-      if (!isInitializeRequest(body)) {
-        res.status(400).json({
-          jsonrpc: '2.0',
-          error: {
-            code: -32000,
-            message: 'Invalid request: Missing session ID',
-          },
-          id: null,
-        });
-        return;
-      }
-
-      const featureFlags = parseFeatureFlags(req);
-
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: (): string => randomUUID(),
-        onsessioninitialized: (sessionId: string): void => {
-          log.info(`Session initialized with ID: ${sessionId}`);
-          transports.set(sessionId, transport);
-          sessionFeatureFlags.set(sessionId, featureFlags);
-        },
-        onsessionclosed: (sessionId: string): void => {
-          if (sessionId && transports.has(sessionId)) {
-            log.info(
-              `Transport closed for session ${sessionId}, removing from transports map`,
-            );
-            transports.delete(sessionId);
-            sessionFeatureFlags.delete(sessionId);
-          }
-        },
-      });
-
       const { server } = await createServer(context, featureFlags);
-      await server.connect(transport);
-    }
-
-    await transport.handleRequest(req, res, body);
-  };
+      return server;
+    },
+    {
+      onerror: (error) => log.error('Error handling MCP request:', error),
+    },
+  );
+  const handlePerRequest = toNodeHandler(perRequestHandler, {
+    onerror: (error) => log.error('Error handling MCP request:', error),
+  });
 
   router.post('/', async (req: Request, res: Response) => {
     let traceContext = otelContext.active();
@@ -179,9 +101,11 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
       traceContext,
       async (span) => {
         try {
-          await (stateful
-            ? handleStatefulRequest(req, res)
-            : handleStatelessRequest(req, res));
+          // When a body parser already read the body, use it. Otherwise
+          // the handler reads the body from the request stream.
+          await requestFeatureFlags.run(parseFeatureFlags(req), () =>
+            handlePerRequest(req, res, req.body),
+          );
           span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
           span.setStatus({ code: SpanStatusCode.OK });
         } catch (error) {
@@ -208,52 +132,19 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
     );
   });
 
-  // Reusable handler for GET and DELETE requests
-  const handleSessionRequest = async (
-    req: Request,
-    res: Response,
-  ): Promise<void> => {
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    if (!stateful) {
-      res.status(405).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Method not allowed.',
-        },
-        id: null,
-      });
-      return;
-    }
-
-    if (!sessionId) {
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Invalid request: Missing session ID',
-        },
-        id: null,
-      });
-      return;
-    }
-
-    if (!transports.get(sessionId)) {
-      res.status(404).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Not Found: No session found for that ID',
-        },
-        id: sessionId,
-      });
-      return;
-    }
-
-    await transports.get(sessionId)?.handleRequest(req, res);
+  // Without sessions, the server does not use GET or DELETE requests.
+  const methodNotAllowed = (_req: Request, res: Response): void => {
+    res.status(405).json({
+      jsonrpc: '2.0',
+      error: {
+        code: -32000,
+        message: 'Method not allowed.',
+      },
+      id: null,
+    });
   };
 
-  // Handle GET requests for server-to-client notifications via SSE
+  // Serve a documentation page to browsers
   router.get('/', (req, res) => {
     if (req.accepts('html')) {
       // The client controls these values (directly, or through a proxy that
@@ -290,26 +181,13 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
 </html>`);
       return;
     }
-    handleSessionRequest(req, res);
+    methodNotAllowed(req, res);
   });
 
-  // Handle DELETE requests for session termination
-  router.delete('/', handleSessionRequest);
+  router.delete('/', methodNotAllowed);
 
   const cleanup = async (): Promise<void> => {
-    // Close all active transports to properly clean up resources
-    for (const sessionId in transports) {
-      try {
-        log.info(`Closing transport for session ${sessionId}`);
-        await transports.get(sessionId)?.close();
-        transports.delete(sessionId);
-      } catch (error) {
-        log.error(
-          `Error closing transport for session ${sessionId}:`,
-          error as Error,
-        );
-      }
-    }
+    await perRequestHandler.close();
   };
 
   return [router, cleanup];

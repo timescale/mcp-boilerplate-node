@@ -1,18 +1,14 @@
 import {
+  type CallToolResult,
+  type GetPromptResult,
+  type InputRequiredResult,
+  type ListResourcesResult,
   McpServer,
+  type ReadResourceResult,
   ResourceTemplate,
-  type ToolCallback,
-} from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type {
-  CallToolResult,
-  GetPromptResult,
-  ListResourcesResult,
-  ReadResourceResult,
-  ServerCapabilities,
-  ServerNotification,
-  ServerRequest,
-} from '@modelcontextprotocol/sdk/types.js';
+  type ServerCapabilities,
+  type ServerContext,
+} from '@modelcontextprotocol/server';
 import {
   context as otelContext,
   propagation,
@@ -20,6 +16,7 @@ import {
   SpanStatusCode,
   trace,
 } from '@opentelemetry/api';
+import { z } from 'zod';
 import { log } from './logger.js';
 import type {
   BaseApiFactory,
@@ -100,11 +97,17 @@ export const mcpServerFactory = async <
       version,
     },
     {
+      // The server never sends list_changed notifications, so it must not
+      // advertise them. If `listChanged` is not set, the SDK sets it to true.
       capabilities: {
-        ...(enableTools && apiFactories.length ? { tools: {} } : null),
-        ...(enablePrompts && promptFactories.length ? { prompts: {} } : null),
+        ...(enableTools && apiFactories.length
+          ? { tools: { listChanged: false } }
+          : null),
+        ...(enablePrompts && promptFactories.length
+          ? { prompts: { listChanged: false } }
+          : null),
         ...(enableResources && resourceFactories.length
-          ? { resources: {} }
+          ? { resources: { listChanged: false } }
           : null),
         ...additionalCapabilities,
       },
@@ -128,6 +131,8 @@ export const mcpServerFactory = async <
         tool.name,
         {
           ...tool.config,
+          inputSchema: z.object(tool.config.inputSchema),
+          outputSchema: z.object(tool.config.outputSchema),
           annotations: {
             ...tool.config.annotations,
             // Some clients (e.g. claude code) do not yet support the title field
@@ -137,16 +142,17 @@ export const mcpServerFactory = async <
             title: tool.config.title,
           },
         },
-        (async (
+        async (
           args: Record<string, unknown>,
-          extra: RequestHandlerExtra<ServerRequest, ServerNotification>,
+          ctx: ServerContext,
         ): Promise<CallToolResult> => {
           let traceContext = otelContext.active();
-          if (extra?._meta?.traceparent) {
+          const meta = ctx.mcpReq._meta;
+          if (meta?.traceparent) {
             // Some MCP clients (e.g. pydantic) pass the parent trace context
             traceContext = propagation.extract(traceContext, {
-              traceparent: extra._meta.traceparent,
-              tracestate: extra._meta.tracestate,
+              traceparent: meta.traceparent,
+              tracestate: meta.tracestate,
             });
           }
           return tracer.startActiveSpan(
@@ -190,7 +196,7 @@ export const mcpServerFactory = async <
               }
             },
           );
-        }) as ToolCallback<typeof tool.config.inputSchema>,
+        },
       );
     }
   }
@@ -207,28 +213,33 @@ export const mcpServerFactory = async <
       ) {
         continue;
       }
-      server.registerPrompt(prompt.name, prompt.config, async (args) =>
-        tracer.startActiveSpan(
-          `mcp.prompt.${prompt.name}`,
-          async (span): Promise<GetPromptResult> => {
-            span.setAttribute('mcp.prompt.args', JSON.stringify(args));
-            try {
-              const result = await prompt.fn(args as Record<string, unknown>);
-              span.setStatus({ code: SpanStatusCode.OK });
-              return result;
-            } catch (error) {
-              log.error('Error invoking prompt:', error as Error);
-              span.recordException(error as Error);
-              span.setStatus({
-                code: SpanStatusCode.ERROR,
-                message: (error as Error).message,
-              });
-              throw error;
-            } finally {
-              span.end();
-            }
-          },
-        ),
+      const { inputSchema, ...promptConfig } = prompt.config;
+      server.registerPrompt(
+        prompt.name,
+        // The SDK reads the prompt arguments from `argsSchema`.
+        { ...promptConfig, argsSchema: z.object(inputSchema) },
+        async (args) =>
+          tracer.startActiveSpan(
+            `mcp.prompt.${prompt.name}`,
+            async (span): Promise<GetPromptResult> => {
+              span.setAttribute('mcp.prompt.args', JSON.stringify(args));
+              try {
+                const result = await prompt.fn(args as Record<string, unknown>);
+                span.setStatus({ code: SpanStatusCode.OK });
+                return result;
+              } catch (error) {
+                log.error('Error invoking prompt:', error as Error);
+                span.recordException(error as Error);
+                span.setStatus({
+                  code: SpanStatusCode.ERROR,
+                  message: (error as Error).message,
+                });
+                throw error;
+              } finally {
+                span.end();
+              }
+            },
+          ),
       );
     }
   }
@@ -254,12 +265,10 @@ export const mcpServerFactory = async <
             async (uri: URL, extra) =>
               tracer.startActiveSpan(
                 `mcp.resource.static.${resource.name}`,
-                async (span): Promise<ReadResourceResult> => {
+                async (
+                  span,
+                ): Promise<ReadResourceResult | InputRequiredResult> => {
                   span.setAttribute('mcp.resource.uri', uri.toString());
-                  span.setAttribute(
-                    'mcp.resource.extra',
-                    JSON.stringify(extra),
-                  );
                   try {
                     const result = await resource.read(uri, extra);
                     span.setStatus({ code: SpanStatusCode.OK });
@@ -323,15 +332,13 @@ export const mcpServerFactory = async <
             async (uri: URL, variables, extra) =>
               tracer.startActiveSpan(
                 `mcp.resource.templated.${resource.name}`,
-                async (span): Promise<ReadResourceResult> => {
+                async (
+                  span,
+                ): Promise<ReadResourceResult | InputRequiredResult> => {
                   span.setAttribute('mcp.resource.uri', uri.toString());
                   span.setAttribute(
                     'mcp.resource.variables',
                     JSON.stringify(variables),
-                  );
-                  span.setAttribute(
-                    'mcp.resource.extra',
-                    JSON.stringify(extra),
                   );
                   try {
                     const result = await resource.read(uri, variables, extra);

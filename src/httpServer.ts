@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import type { Server } from 'node:http';
-import { hostHeaderValidation } from '@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js';
+import { hostHeaderValidation } from '@modelcontextprotocol/node';
 import express, {
   type NextFunction,
   type Request,
@@ -29,7 +29,6 @@ interface HttpServerOptions<Context extends Record<string, unknown>> {
   resourceFactories?: readonly ResourceFactory<Context>[];
   additionalSetup?: (args: AdditionalSetupArgs<Context>) => void;
   cleanupFn?: () => void | Promise<void>;
-  stateful?: boolean;
   instructions?: string;
   /**
    * When provided, mount routers on this app/router instead of creating a new
@@ -140,7 +139,6 @@ export const httpServerFactory = async <
   resourceFactories,
   additionalSetup,
   cleanupFn,
-  stateful = true,
   instructions,
   app: externalApp,
   mcpPath = '/mcp',
@@ -172,8 +170,14 @@ export const httpServerFactory = async <
   // Scoped to the MCP and API mount paths so callers providing an external
   // app keep full control over their other routes.
   const allowedHostnames = resolveAllowedHostnames(dnsRebindingProtection);
-  const hostValidation: RequestHandler | null = allowedHostnames
+  const validateHost = allowedHostnames
     ? hostHeaderValidation(allowedHostnames)
+    : null;
+  // The guard sends the 403 response itself when the Host is not allowed.
+  const hostValidation: RequestHandler | null = validateHost
+    ? (req, res, next): void => {
+        if (validateHost(req, res)) next();
+      }
     : null;
   if (allowedHostnames) {
     log.info('DNS rebinding protection enabled', { allowedHostnames });
@@ -197,7 +201,7 @@ export const httpServerFactory = async <
         featureFlags,
         instructions,
       }),
-    { name, stateful, inspector },
+    { name, inspector },
   );
   cleanupFns.push(mcpCleanup);
   if (hostValidation) {

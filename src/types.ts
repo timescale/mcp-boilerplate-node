@@ -1,14 +1,12 @@
 import type {
   CompleteResourceTemplateCallback,
+  GetPromptResult,
   ListResourcesCallback,
   ReadResourceCallback,
   ReadResourceTemplateCallback,
   ResourceMetadata,
-} from '@modelcontextprotocol/sdk/server/mcp.js';
-import type {
-  GetPromptResult,
   ToolAnnotations,
-} from '@modelcontextprotocol/sdk/types.js';
+} from '@modelcontextprotocol/server';
 import type { Router } from 'express';
 import type { ZodRawShape, z } from 'zod';
 

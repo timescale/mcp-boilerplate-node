@@ -10,6 +10,21 @@ npm install @tigerdata/mcp-boilerplate
 
 See [tiger-skills-mcp-server](https://github.com/tigerdata/tiger-skills-mcp-server) for an example MCP server using this boilerplate.
 
+### Protocol versions
+
+The servers from `httpServerFactory` and `stdioServerFactory` serve the [2026-07-28](https://modelcontextprotocol.io/specification/2026-07-28) MCP protocol and the 2025 protocol versions (up to `2025-11-25`) on the same endpoint. The client selects the version.
+
+The HTTP server does not use sessions (the 2026-07-28 protocol has none, and they are optional in the 2025 protocol). Each HTTP request gets a new server instance. Thus, the server cannot send requests to a 2025 client (for example, elicitation or sampling), and cannot send it notifications outside of a request (for example, `list_changed`).
+
+### Upgrading from v1 of the MCP SDK
+
+This package uses v2 of the [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk) (`@modelcontextprotocol/server`). If your server uses SDK types or APIs directly, see the [SDK migration guide](https://ts.sdk.modelcontextprotocol.io/v2/migration/upgrade-to-v2). In particular:
+
+- `zod` must be `^4.2.0`.
+- `httpServerFactory` no longer has the `stateful` option. Remove `stateful: false` from your options.
+- `additionalSetup` receives a v2 `McpServer`.
+- Resource callbacks (`read`, `list`) receive a v2 `ServerContext` (`ctx`) instead of the v1 `extra` object. For example, `extra.signal` is now `ctx.mcpReq.signal`.
+
 ### DNS Rebinding Protection
 
 MCP servers reachable over HTTP can be targeted by [DNS rebinding attacks](https://en.wikipedia.org/wiki/DNS_rebinding), where a malicious website bypasses the browser same-origin policy by pointing a domain at a localhost (or otherwise private) address to reach a local server. The MCP SDK guards against this by validating the `Host` header against an allow-list.

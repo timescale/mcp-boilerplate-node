@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'bun:test';
-import { toJsonSchemaCompat } from '@modelcontextprotocol/sdk/server/zod-json-schema-compat.js';
 import { z } from 'zod';
 import { zDateRangeInclude } from './schemas.js';
 
@@ -17,7 +16,11 @@ describe('zDateRangeInclude JSON Schema', () => {
     ),
   };
 
-  const jsonSchema = toJsonSchemaCompat(z.object(inputSchema));
+  // The MCP SDK uses the same conversion when it advertises a tool.
+  const jsonSchema = z.toJSONSchema(z.object(inputSchema), {
+    io: 'input',
+    target: 'draft-2020-12',
+  });
 
   it('contains zero $ref references (LLM provider compatibility)', () => {
     const serialized = JSON.stringify(jsonSchema);
