@@ -7,9 +7,9 @@ import type { AuthInfo } from '@modelcontextprotocol/server';
 import { trace } from '@opentelemetry/api';
 import {
   InMemorySpanExporter,
-  NodeTracerProvider,
   SimpleSpanProcessor,
-} from '@opentelemetry/sdk-trace-node';
+  TracerProvider,
+} from '@opentelemetry/sdk-trace';
 import express from 'express';
 import { httpServerFactory } from '../httpServer.js';
 import type { ResourceFactory } from '../types.js';
@@ -28,8 +28,8 @@ const noteResourceFactory: ResourceFactory<Record<string, unknown>> = () => ({
 
 describe('resource spans', () => {
   const exporter = new InMemorySpanExporter();
-  const provider = new NodeTracerProvider({
-    spanProcessors: [new SimpleSpanProcessor(exporter)],
+  const provider = new TracerProvider({
+    spanProcessors: [new SimpleSpanProcessor({ exporter })],
   });
   let cleanup: () => Promise<void> = async () => {};
 

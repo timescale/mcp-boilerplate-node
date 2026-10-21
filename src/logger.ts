@@ -1,8 +1,4 @@
-import {
-  type LogAttributes,
-  logs,
-  SeverityNumber,
-} from '@opentelemetry/api-logs';
+import { type Attributes, logs, SeverityNumber } from '@opentelemetry/api';
 
 const name = process.env.OTEL_SERVICE_NAME || 'mcp-app';
 const logger = logs.getLogger(name);
@@ -45,14 +41,10 @@ const writeToConsole = (
 };
 
 interface LogInterface {
-  debug: (body: string, attributes?: LogAttributes) => void;
-  info: (body: string, attributes?: LogAttributes) => void;
-  warn: (body: string, attributes?: LogAttributes) => void;
-  error: (
-    body: string,
-    error?: Error | null,
-    attributes?: LogAttributes,
-  ) => void;
+  debug: (body: string, attributes?: Attributes) => void;
+  info: (body: string, attributes?: Attributes) => void;
+  warn: (body: string, attributes?: Attributes) => void;
+  error: (body: string, error?: Error | null, attributes?: Attributes) => void;
 }
 
 // Helper functions to replace console.log
