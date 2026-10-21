@@ -15,7 +15,7 @@ import { NodeSDK } from '@opentelemetry/sdk-node';
 import {
   BatchSpanProcessor,
   type SpanProcessor,
-} from '@opentelemetry/sdk-trace-base';
+} from '@opentelemetry/sdk-trace';
 import { log } from './logger.js';
 
 interface Options {
@@ -34,27 +34,29 @@ export const instrument = (
   const logRecordProcessors: LogRecordProcessor[] = [];
 
   if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT) {
-    spanProcessors.push(new BatchSpanProcessor(new GrpcTraceExporter()));
+    spanProcessors.push(
+      new BatchSpanProcessor({ exporter: new GrpcTraceExporter() }),
+    );
   }
   if (process.env.JAEGER_TRACES_ENDPOINT) {
     spanProcessors.push(
-      new BatchSpanProcessor(
-        new GrpcTraceExporter({
+      new BatchSpanProcessor({
+        exporter: new GrpcTraceExporter({
           url: process.env.JAEGER_TRACES_ENDPOINT,
         }),
-      ),
+      }),
     );
   }
   if (process.env.LOGFIRE_TRACES_ENDPOINT) {
     spanProcessors.push(
-      new BatchSpanProcessor(
-        new HttpTraceExporter({
+      new BatchSpanProcessor({
+        exporter: new HttpTraceExporter({
           url: process.env.LOGFIRE_TRACES_ENDPOINT,
           headers: process.env.LOGFIRE_TOKEN
             ? { Authorization: `Bearer ${process.env.LOGFIRE_TOKEN}` }
             : {},
         }),
-      ),
+      }),
     );
   }
   if (process.env.LOGFIRE_LOGS_ENDPOINT) {

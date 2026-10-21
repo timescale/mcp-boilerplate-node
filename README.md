@@ -8,6 +8,8 @@ This provides some common code for creating a [Model Context Protocol](https://m
 npm install @tigerdata/mcp-boilerplate
 ```
 
+Requires Node.js 22.15 or later.
+
 See [tiger-skills-mcp-server](https://github.com/tigerdata/tiger-skills-mcp-server) for an example MCP server using this boilerplate.
 
 ### Protocol versions
