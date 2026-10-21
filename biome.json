@@ -6,7 +6,8 @@
     "useIgnoreFile": true
   },
   "files": {
-    "ignoreUnknown": false
+    "ignoreUnknown": false,
+    "includes": ["**", "!**/SKILL.md"]
   },
   "formatter": {
     "enabled": true,
@@ -22,14 +23,6 @@
     "formatter": {
       "quoteStyle": "single"
     }
-  },
-  "markdown": {
-    "formatter": { "enabled": false },
-    "linter": { "enabled": false }
-  },
-  "yaml": {
-    "formatter": { "enabled": false },
-    "linter": { "enabled": false }
   },
   "assist": {
     "enabled": true,
