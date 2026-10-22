@@ -4,11 +4,15 @@ import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
 import {
   context as otelContext,
   propagation,
+  type Span,
   SpanKind,
   SpanStatusCode,
   trace,
 } from '@opentelemetry/api';
-import { ATTR_HTTP_RESPONSE_STATUS_CODE } from '@opentelemetry/semantic-conventions';
+import {
+  ATTR_HTTP_RESPONSE_STATUS_CODE,
+  ATTR_USER_AGENT_ORIGINAL,
+} from '@opentelemetry/semantic-conventions';
 import escapeHtml from 'escape-html';
 import { type Request, type Response, Router } from 'express';
 import { log } from '../logger.js';
@@ -20,6 +24,33 @@ import type {
 
 const name = process.env.OTEL_SERVICE_NAME;
 const tracer = trace.getTracer(name ? `${name}.router.mcp` : 'router.mcp');
+
+// This attribute is incubating in OTel. Its entry point can change in a minor
+// release, thus we copy the name here and do not import it.
+const ATTR_MCP_METHOD_NAME = 'mcp.method.name';
+
+/**
+ * Read the JSON-RPC method from a copy of the request body, for telemetry.
+ * The MCP handler reads the original body and answers invalid JSON itself.
+ */
+const readJsonRpcMethod = async (
+  request: globalThis.Request,
+): Promise<string | undefined> => {
+  try {
+    const body: unknown = await request.clone().json();
+    if (
+      body &&
+      typeof body === 'object' &&
+      'method' in body &&
+      typeof body.method === 'string'
+    ) {
+      return body.method;
+    }
+  } catch {
+    // The body is not valid JSON. The MCP handler answers with an error.
+  }
+  return undefined;
+};
 
 /** Take the first value, because a header can repeat. */
 const firstHeaderValue = (
@@ -83,9 +114,23 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
       onerror: (error) => log.error('Error handling MCP request:', error),
     },
   );
-  const handlePerRequest = toNodeHandler(perRequestHandler, {
-    onerror: (error) => log.error('Error handling MCP request:', error),
-  });
+  // Make a Node handler for each request, so that the handler can put the
+  // JSON-RPC method on the span of that request.
+  const handlePerRequest = (span: Span) =>
+    toNodeHandler(
+      {
+        fetch: async (request, options) => {
+          const method = await readJsonRpcMethod(request);
+          if (method) {
+            span.setAttribute(ATTR_MCP_METHOD_NAME, method);
+          }
+          return perRequestHandler.fetch(request, options);
+        },
+      },
+      {
+        onerror: (error) => log.error('Error handling MCP request:', error),
+      },
+    );
 
   router.post('/', async (req: Request, res: Response) => {
     let traceContext = otelContext.active();
@@ -100,11 +145,15 @@ export const mcpRouterFactory = <Context extends Record<string, unknown>>(
       { kind: SpanKind.SERVER },
       traceContext,
       async (span) => {
+        const userAgent = req.headers['user-agent'];
+        if (userAgent) {
+          span.setAttribute(ATTR_USER_AGENT_ORIGINAL, userAgent);
+        }
         try {
           // When a body parser already read the body, use it. Otherwise
           // the handler reads the body from the request stream.
           await requestFeatureFlags.run(parseFeatureFlags(req), () =>
-            handlePerRequest(req, res, req.body),
+            handlePerRequest(span)(req, res, req.body),
           );
           span.setAttribute(ATTR_HTTP_RESPONSE_STATUS_CODE, res.statusCode);
           span.setStatus({ code: SpanStatusCode.OK });
