@@ -1,17 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from 'bun:test';
+import { afterAll, describe, expect, it } from 'bun:test';
 import {
   Client,
   StreamableHTTPClientTransport,
 } from '@modelcontextprotocol/client';
 import type { AuthInfo } from '@modelcontextprotocol/server';
-import { trace } from '@opentelemetry/api';
-import {
-  InMemorySpanExporter,
-  SimpleSpanProcessor,
-  TracerProvider,
-} from '@opentelemetry/sdk-trace';
 import express from 'express';
 import { httpServerFactory } from '../httpServer.js';
+import { spanExporter } from '../testFixtures/spanExporter.js';
 import type { ResourceFactory } from '../types.js';
 
 const secretToken = 'secret-access-token';
@@ -27,20 +22,11 @@ const noteResourceFactory: ResourceFactory<Record<string, unknown>> = () => ({
 });
 
 describe('resource spans', () => {
-  const exporter = new InMemorySpanExporter();
-  const provider = new TracerProvider({
-    spanProcessors: [new SimpleSpanProcessor({ exporter })],
-  });
   let cleanup: () => Promise<void> = async () => {};
-
-  beforeAll(() => {
-    trace.setGlobalTracerProvider(provider);
-  });
 
   afterAll(async () => {
     await cleanup();
-    trace.disable();
-    await provider.shutdown();
+    spanExporter.reset();
   });
 
   it('do not record the access token', async () => {
@@ -81,7 +67,7 @@ describe('resource spans', () => {
     await client.readResource({ uri: 'test://note' });
     await client.close();
 
-    const resourceSpan = exporter
+    const resourceSpan = spanExporter
       .getFinishedSpans()
       .find((span) => span.name === 'mcp.resource.static.note');
     expect(resourceSpan).toBeDefined();
